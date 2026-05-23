@@ -170,11 +170,7 @@ export async function generateImage(
 
 // ====== Slide-level helper (used by both batch and single-slide regen) ======
 
-function resolveImagePrompt(slide: Slide, styleDescription: string): string {
-  const p = (slide.image_prompt || '').trim();
-  if (p) return p;
-  // Fallback: minimal prompt from slide_script + style (shouldn't normally happen
-  // because LLM is instructed to always emit image_prompt)
+function fallbackPrompt(slide: Slide, styleDescription: string): string {
   return `信息图风格 16:9 PPT 幻灯片。\n视觉风格：${styleDescription}\n本页内容：${slide.slide_script}`;
 }
 
@@ -189,8 +185,17 @@ export async function generateSingleSlideImage(params: {
 }): Promise<string> {
   const { slide, styleDescription, language, anchorImageUrl, isAnchor, provider, apiKeys } = params;
   const refs = !isAnchor && anchorImageUrl ? [anchorImageUrl] : undefined;
-  const rawPrompt = resolveImagePrompt(slide, styleDescription);
-  const fullPrompt = buildImagePrompt(rawPrompt, language, !!refs);
+  const fallback = fallbackPrompt(slide, styleDescription);
+  const promptGpt = (slide.image_prompt || '').trim() || fallback;
+  const promptSeedream = (slide.image_prompt_seedream || '').trim() || undefined;
+
+  const fullPrompt = buildImagePrompt({
+    imagePromptGpt: promptGpt,
+    imagePromptSeedream: promptSeedream,
+    language,
+    provider,
+    hasReference: !!refs,
+  });
   return generateImage(
     provider,
     fullPrompt,

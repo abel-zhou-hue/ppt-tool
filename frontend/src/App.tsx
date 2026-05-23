@@ -135,6 +135,13 @@ function App() {
     setDeck({ ...deck, slides: newSlides });
   }
 
+  function updateSlideImagePromptSeedream(idx: number, value: string) {
+    if (!deck) return;
+    const newSlides = [...deck.slides];
+    newSlides[idx] = { ...newSlides[idx], image_prompt_seedream: value };
+    setDeck({ ...deck, slides: newSlides });
+  }
+
   function updateStyleDescription(value: string) {
     if (!deck) return;
     setDeck({ ...deck, style_description: value });
@@ -425,6 +432,9 @@ function App() {
                       <summary>
                         图像 prompt（高级，可手动调整出图）
                       </summary>
+                      <label className="slide-field-label">
+                        gpt-image-2 prompt
+                      </label>
                       <textarea
                         className="slide-image-prompt"
                         value={s.image_prompt || ''}
@@ -433,6 +443,18 @@ function App() {
                         }
                         rows={5}
                         placeholder="（LLM 已为本页生成）"
+                      />
+                      <label className="slide-field-label">
+                        Seedream prompt（更详细，用「」标记真正要显示的文字）
+                      </label>
+                      <textarea
+                        className="slide-image-prompt"
+                        value={s.image_prompt_seedream || ''}
+                        onChange={(e) =>
+                          updateSlideImagePromptSeedream(i, e.target.value)
+                        }
+                        rows={7}
+                        placeholder="（LLM 已为本页生成 Seedream 专用 prompt）"
                       />
                     </details>
                   </div>
