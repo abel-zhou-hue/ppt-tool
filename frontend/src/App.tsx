@@ -195,15 +195,18 @@ function App() {
               <button
                 className="secondary"
                 onClick={handleGenerateImages}
-                disabled={generatingImages || hasImages}
+                disabled={generatingImages || regenIdx !== null}
               >
                 {generatingImages
                   ? '生成图像中……'
                   : hasImages
-                  ? '✓ 图像已生成'
+                  ? '重新生成所有图像'
                   : '生成图像'}
               </button>
-              <button onClick={handleExport} disabled={exporting || generatingImages}>
+              <button
+                onClick={handleExport}
+                disabled={exporting || generatingImages || regenIdx !== null}
+              >
                 {exporting ? '导出中……' : '下载 .pptx'}
               </button>
             </>
