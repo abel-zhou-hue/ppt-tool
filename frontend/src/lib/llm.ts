@@ -21,22 +21,35 @@ interface OpenAICompatCallParams {
 }
 
 async function callOpenAICompatible(p: OpenAICompatCallParams): Promise<Deck> {
-  const resp = await fetch(`${p.baseUrl}/chat/completions`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${p.apiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: p.model,
-      messages: [
-        { role: 'system', content: getSystemPrompt(p.language) },
-        { role: 'user', content: p.script },
-      ],
-      response_format: { type: 'json_object' },
-      temperature: 0.7,
-    }),
-  });
+  let resp: Response;
+  try {
+    resp = await fetch(`${p.baseUrl}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${p.apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: p.model,
+        messages: [
+          { role: 'system', content: getSystemPrompt(p.language) },
+          { role: 'user', content: p.script },
+        ],
+        response_format: { type: 'json_object' },
+        temperature: 0.7,
+        max_tokens: 8192,
+      }),
+    });
+  } catch (e) {
+    // fetch 本身失败（网络断、CORS、服务器关连接）
+    const msg = e instanceof Error ? e.message : String(e);
+    throw new Error(
+      `LLM 网络请求失败：${msg}。\n` +
+        `常见原因：1) 输出过长触发网关超时（试试缩短输入文稿）；` +
+        `2) 模型名不对（在齿轮里检查 Doubao 模型名）；` +
+        `3) 服务暂时不可用`,
+    );
+  }
   if (!resp.ok) {
     const text = await resp.text();
     throw new Error(`LLM 调用失败 (${resp.status}): ${text.slice(0, 300)}`);

@@ -6,7 +6,7 @@ const SYSTEM_PROMPT_ZH = `你是 PPT 内容设计师 + 视觉指导。用户给�
 
 每页输出三个字段：
 - id: 字符串，"s1", "s2", ... 递增
-- slide_script: 本页详细内容，**200-400 字**。基于原文稿展开本页要表达的观点、事实、细节，可补充自然过渡和必要解释，但严格不偏离原意、不编造事实数字。
+- slide_script: 本页详细内容，**120-200 字**。基于原文稿展开本页要表达的观点、事实、细节，可补充自然过渡和必要解释，但严格不偏离原意、不编造事实数字。
 - image_prompt: 见任务三（最关键）
 
 # 任务二：设计整套 PPT 的统一视觉风格
@@ -20,7 +20,7 @@ const SYSTEM_PROMPT_ZH = `你是 PPT 内容设计师 + 视觉指导。用户给�
 
 # 任务三：为每一页生成 image_prompt（关键）
 
-image_prompt 直接喂给图像生成模型出图，**每页 200-400 字**，必须严格满足以下三个要求：
+image_prompt 直接喂给图像生成模型出图，**每页 150-250 字**，必须严格满足以下三个要求：
 
 ## 要求 1：整体风格一致
 - 每个 image_prompt 都要明确写出 deck 的统一视觉风格关键词（配色、字体感觉、装饰元素），可直接复用 style_description 里的关键词
@@ -79,7 +79,7 @@ const SYSTEM_PROMPT_EN = `You are a PPT content designer + visual director. The 
 
 For each slide output three fields:
 - id: string, "s1", "s2", ... incrementing
-- slide_script: detailed page content, **40-80 English words (or 200-400 CJK chars)**. Expand the point/facts/details based on the source script; you may add natural transitions and explanations, but stay strictly faithful — do NOT invent facts or numbers.
+- slide_script: detailed page content, **30-50 English words (or 120-200 CJK chars)**. Expand the point/facts/details based on the source script; you may add natural transitions and explanations, but stay strictly faithful — do NOT invent facts or numbers.
 - image_prompt: see Task 3 (most important)
 
 # Task 2: Design unified visual style for the whole deck
@@ -93,7 +93,7 @@ Output style_description (at least 60 words), specific to:
 
 # Task 3: Generate image_prompt for each slide (KEY)
 
-image_prompt is fed directly to the image generation model. **40-80 words each**. Must strictly satisfy three requirements:
+image_prompt is fed directly to the image generation model. **35-60 words each**. Must strictly satisfy three requirements:
 
 ## Req 1: Unified style across deck
 - Every image_prompt must explicitly include the deck's unified style keywords (colors, typography feel, decorative elements). Reuse keywords from style_description directly.
