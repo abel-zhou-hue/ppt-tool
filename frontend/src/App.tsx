@@ -88,6 +88,14 @@ function App() {
 
   async function handleGenerateImages() {
     if (!deck) return;
+    if (
+      deck.anchor_image_url &&
+      !window.confirm(
+        '确定要重新生成所有图像吗？这会覆盖现有图像，并重新消耗 API 额度。',
+      )
+    ) {
+      return;
+    }
     setGeneratingImages(true);
     setError(null);
     try {
