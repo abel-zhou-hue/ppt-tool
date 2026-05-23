@@ -3,6 +3,7 @@ export type Language = 'zh' | 'en';
 export interface Slide {
   id: string;
   slide_script: string;
+  image_prompt: string;
   image_url?: string | null;
 }
 

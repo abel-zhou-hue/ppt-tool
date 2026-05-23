@@ -572,7 +572,8 @@ button.cta {
   box-shadow: var(--shadow-sm);
 }
 
-.slide-script {
+.slide-script,
+.slide-image-prompt {
   width: 100%;
   padding: 0.7rem 0.85rem;
   font-size: 0.88rem;
@@ -585,13 +586,78 @@ button.cta {
   line-height: 1.55;
   transition: all var(--transition);
   min-height: 100px;
+  margin-bottom: 0;
 }
 
-.slide-script:focus {
+.slide-script:focus,
+.slide-image-prompt:focus {
   outline: none;
   border-color: var(--primary);
   box-shadow: 0 0 0 3px var(--primary-soft);
   background: white;
+}
+
+.slide-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 0.85rem;
+}
+
+.slide-regen {
+  padding: 0.4rem 0.85rem !important;
+  font-size: 0.78rem !important;
+  width: auto !important;
+  margin: 0 !important;
+}
+
+.slide-field-label {
+  display: block;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin: 0.5rem 0 0.4rem;
+}
+
+.slide-prompt-details {
+  margin-top: 0.85rem;
+  border-top: 1px dashed var(--border);
+  padding-top: 0.85rem;
+}
+
+.slide-prompt-details summary {
+  cursor: pointer;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  font-weight: 500;
+  list-style: none;
+  user-select: none;
+  margin-bottom: 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.slide-prompt-details summary::-webkit-details-marker {
+  display: none;
+}
+
+.slide-prompt-details summary::before {
+  content: '▸';
+  color: var(--text-soft);
+  transition: transform var(--transition);
+  display: inline-block;
+}
+
+.slide-prompt-details[open] summary::before {
+  transform: rotate(90deg);
+}
+
+.slide-image-prompt {
+  font-size: 0.82rem;
+  min-height: 80px;
+  font-family: ui-monospace, 'SF Mono', Menlo, monospace;
 }
 
 /* --- Form elements (selects) --- */

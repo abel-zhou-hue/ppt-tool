@@ -8,6 +8,7 @@ import {
   listImageModels,
   listLLMs,
   loadApiKeys,
+  regenerateSlide,
   saveApiKeys,
 } from './api/client';
 
@@ -50,6 +51,7 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [generatingImages, setGeneratingImages] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [regenIdx, setRegenIdx] = useState<number | null>(null);
   const [deck, setDeck] = useState<Deck | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -118,9 +120,30 @@ function App() {
     setDeck({ ...deck, slides: newSlides });
   }
 
+  function updateSlideImagePrompt(idx: number, value: string) {
+    if (!deck) return;
+    const newSlides = [...deck.slides];
+    newSlides[idx] = { ...newSlides[idx], image_prompt: value };
+    setDeck({ ...deck, slides: newSlides });
+  }
+
   function updateStyleDescription(value: string) {
     if (!deck) return;
     setDeck({ ...deck, style_description: value });
+  }
+
+  async function handleRegenerateSlide(idx: number) {
+    if (!deck) return;
+    setRegenIdx(idx);
+    setError(null);
+    try {
+      const updated = await regenerateSlide(deck, idx, imageModel);
+      setDeck(updated);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setRegenIdx(null);
+    }
   }
 
   function handleKeysSaved(keys: ApiKeys) {
@@ -365,12 +388,42 @@ function App() {
                         alt={`slide ${i + 1}`}
                       />
                     )}
+                    <div className="slide-actions">
+                      <button
+                        className="ghost slide-regen"
+                        onClick={() => handleRegenerateSlide(i)}
+                        disabled={
+                          regenIdx !== null || generatingImages || loading
+                        }
+                      >
+                        {regenIdx === i
+                          ? '生成中……'
+                          : s.image_url
+                          ? '重新生成图像'
+                          : '生成此页图像'}
+                      </button>
+                    </div>
+                    <label className="slide-field-label">详细文字稿</label>
                     <textarea
                       className="slide-script"
                       value={s.slide_script}
                       onChange={(e) => updateSlideScript(i, e.target.value)}
-                      rows={4}
+                      rows={6}
                     />
+                    <details className="slide-prompt-details">
+                      <summary>
+                        图像 prompt（高级，可手动调整出图）
+                      </summary>
+                      <textarea
+                        className="slide-image-prompt"
+                        value={s.image_prompt || ''}
+                        onChange={(e) =>
+                          updateSlideImagePrompt(i, e.target.value)
+                        }
+                        rows={5}
+                        placeholder="（LLM 已为本页生成）"
+                      />
+                    </details>
                   </div>
                 ))}
               </div>

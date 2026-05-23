@@ -1,4 +1,4 @@
-import type { ApiKeys, Deck, Slide } from '../types/deck';
+import type { ApiKeys, Deck, Language, Slide } from '../types/deck';
 import { buildImagePrompt } from './prompts';
 import {
   DEFAULT_SEEDREAM_I2I_MODEL,
@@ -86,9 +86,7 @@ async function callApimart(
 
 // ====== Seedream (Volcano Engine Ark) - sync ======
 
-// NOTE: Seedream 3.0 要求最少 3,686,400 像素（~2560×1440）。
-// 2K 16:9 用 2560×1440 = 3,686,400 正好达标；
-// 1K 16:9 像素数不足，仅 apimart 能用，Seedream 会 400。
+// Seedream 3.0 要求最少 3,686,400 像素（~2560×1440）
 const SIZE_BY_RES: Record<string, Record<string, string>> = {
   '1k': {
     '16:9': '1536x864',
@@ -170,6 +168,37 @@ export async function generateImage(
   throw new Error(`未知的图像 provider: ${provider}`);
 }
 
+// ====== Slide-level helper (used by both batch and single-slide regen) ======
+
+function resolveImagePrompt(slide: Slide, styleDescription: string): string {
+  const p = (slide.image_prompt || '').trim();
+  if (p) return p;
+  // Fallback: minimal prompt from slide_script + style (shouldn't normally happen
+  // because LLM is instructed to always emit image_prompt)
+  return `信息图风格 16:9 PPT 幻灯片。\n视觉风格：${styleDescription}\n本页内容：${slide.slide_script}`;
+}
+
+export async function generateSingleSlideImage(params: {
+  slide: Slide;
+  styleDescription: string;
+  language: Language;
+  anchorImageUrl: string | null | undefined;
+  isAnchor: boolean;
+  provider: ImageProvider;
+  apiKeys: ApiKeys;
+}): Promise<string> {
+  const { slide, styleDescription, language, anchorImageUrl, isAnchor, provider, apiKeys } = params;
+  const refs = !isAnchor && anchorImageUrl ? [anchorImageUrl] : undefined;
+  const rawPrompt = resolveImagePrompt(slide, styleDescription);
+  const fullPrompt = buildImagePrompt(rawPrompt, language, !!refs);
+  return generateImage(
+    provider,
+    fullPrompt,
+    { size: '16:9', resolution: '2k', referenceImages: refs },
+    apiKeys,
+  );
+}
+
 // ====== Deck-level orchestration: anchor first, then parallel ======
 
 export async function generateDeckImages(
@@ -183,14 +212,16 @@ export async function generateDeckImages(
   const lang = updated.language;
 
   const first = updated.slides[0];
-  const firstPrompt = buildImagePrompt(first.slide_script, style, lang, false);
   try {
-    const url = await generateImage(
+    const url = await generateSingleSlideImage({
+      slide: first,
+      styleDescription: style,
+      language: lang,
+      anchorImageUrl: null,
+      isAnchor: true,
       provider,
-      firstPrompt,
-      { size: '16:9', resolution: '2k' },
       apiKeys,
-    );
+    });
     first.image_url = url;
     updated.anchor_image_url = url;
   } catch (e) {
@@ -200,18 +231,18 @@ export async function generateDeckImages(
   const remaining = updated.slides.slice(1);
   if (!remaining.length) return updated;
 
-  const refs = updated.anchor_image_url ? [updated.anchor_image_url] : undefined;
-
   await Promise.all(
     remaining.map(async (slide: Slide) => {
-      const prompt = buildImagePrompt(slide.slide_script, style, lang, !!refs);
       try {
-        slide.image_url = await generateImage(
+        slide.image_url = await generateSingleSlideImage({
+          slide,
+          styleDescription: style,
+          language: lang,
+          anchorImageUrl: updated.anchor_image_url,
+          isAnchor: false,
           provider,
-          prompt,
-          { size: '16:9', resolution: '2k', referenceImages: refs },
           apiKeys,
-        );
+        });
       } catch (e) {
         console.error(`Slide ${slide.id} image gen failed:`, e);
         slide.image_url = null;
