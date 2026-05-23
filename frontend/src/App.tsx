@@ -41,11 +41,32 @@ function getStage(deck: Deck | null): Stage {
   return 4;
 }
 
+function pageRangeToSlides(
+  range: 'auto' | 'short' | 'medium' | 'long' | 'xlong',
+): { min_slides?: number; max_slides?: number } {
+  switch (range) {
+    case 'short':
+      return { min_slides: 3, max_slides: 5 };
+    case 'medium':
+      return { min_slides: 6, max_slides: 9 };
+    case 'long':
+      return { min_slides: 10, max_slides: 14 };
+    case 'xlong':
+      return { min_slides: 15, max_slides: 20 };
+    case 'auto':
+    default:
+      return {};
+  }
+}
+
 function App() {
   const [script, setScript] = useState('');
   const [language, setLanguage] = useState<Language>('zh');
   const [llmModel, setLlmModel] = useState('deepseek');
   const [imageModel, setImageModel] = useState('gpt-image-2');
+  const [pageRange, setPageRange] = useState<'auto' | 'short' | 'medium' | 'long' | 'xlong'>(
+    'auto',
+  );
   const [llmOptions, setLlmOptions] = useState<string[]>([]);
   const [imageOptions, setImageOptions] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
@@ -77,6 +98,7 @@ function App() {
         language,
         llm_model: llmModel,
         image_model: imageModel,
+        ...pageRangeToSlides(pageRange),
       });
       setDeck(result);
     } catch (e) {
@@ -268,6 +290,21 @@ function App() {
                       {o}
                     </option>
                   ))}
+                </select>
+              </label>
+              <label>
+                <span>页数</span>
+                <select
+                  value={pageRange}
+                  onChange={(e) =>
+                    setPageRange(e.target.value as typeof pageRange)
+                  }
+                >
+                  <option value="auto">自动（LLM 决定）</option>
+                  <option value="short">短（3-5 页）</option>
+                  <option value="medium">中等（6-9 页）</option>
+                  <option value="long">长（10-14 页）</option>
+                  <option value="xlong">超长（15-20 页）</option>
                 </select>
               </label>
             </div>

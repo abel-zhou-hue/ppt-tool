@@ -1,5 +1,5 @@
 import type { ApiKeys, Deck, Language } from '../types/deck';
-import { getSystemPrompt } from './prompts';
+import { buildUserMessage, getSystemPrompt } from './prompts';
 import {
   DEFAULT_DOUBAO_MODEL,
   ENDPOINTS,
@@ -25,6 +25,8 @@ interface OpenAICompatCallParams {
   script: string;
   language: Language;
   imageProvider: ImageProvider;
+  minSlides?: number;
+  maxSlides?: number;
 }
 
 function extractJSON(content: string): unknown {
@@ -96,7 +98,10 @@ async function callOpenAICompatible(p: OpenAICompatCallParams): Promise<Deck> {
         role: 'system',
         content: getSystemPrompt(p.language, p.imageProvider),
       },
-      { role: 'user', content: p.script },
+      {
+        role: 'user',
+        content: buildUserMessage(p.script, p.language, p.minSlides, p.maxSlides),
+      },
     ],
     temperature: 0.7,
     max_tokens: 8192,
@@ -155,6 +160,8 @@ export async function callLLM(
   language: Language,
   apiKeys: ApiKeys,
   imageProvider: ImageProvider = 'gpt-image-2',
+  minSlides?: number,
+  maxSlides?: number,
 ): Promise<Deck> {
   if (provider === 'deepseek') {
     return callOpenAICompatible({
@@ -165,6 +172,8 @@ export async function callLLM(
       script,
       language,
       imageProvider,
+      minSlides,
+      maxSlides,
     });
   }
   if (provider === 'doubao') {
@@ -176,6 +185,8 @@ export async function callLLM(
       script,
       language,
       imageProvider,
+      minSlides,
+      maxSlides,
     });
   }
   throw new Error(`未知的 LLM provider: ${provider}`);

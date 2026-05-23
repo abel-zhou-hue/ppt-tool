@@ -12,6 +12,7 @@ export interface Deck {
   language: Language;
   slides: Slide[];
   style_description: string;
+  deck_title?: string;
   anchor_image_url?: string | null;
 }
 
@@ -20,6 +21,8 @@ export interface ScriptInput {
   language: Language;
   llm_model: string;
   image_model: string;
+  min_slides?: number;
+  max_slides?: number;
 }
 
 export interface ApiKeys {

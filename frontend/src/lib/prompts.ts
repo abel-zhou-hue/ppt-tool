@@ -11,9 +11,13 @@ const SYSTEM_PROMPT_ZH = `你是 PPT 内容设计师 + 视觉指导。用户给�
 - image_prompt: 用于 gpt-image-2 出图（150-250 字）。见任务三 A。
 - image_prompt_seedream: 用于 Seedream 出图（**300-450 字，更详细**）。见任务三 B。
 
-# 任务二：设计整套 PPT 的统一视觉风格
+# 任务二：设计整套 PPT 的统一视觉风格 + 整套主题
 
-输出 style_description（至少 80 字），必须具体到：
+输出两个 deck 级字段：
+
+**deck_title**（必填，4-15 字）：整套 PPT 的主题名，作为下载文件名用，简明扼要概括全部内容。例如"猫咪呕吐应对指南"、"远程办公的演变与未来"、"Q2 业务回顾与展望"。
+
+**style_description**（至少 80 字）：具体到：
 - 配色：3-5 个具体色名或十六进制（如"深蓝 #1B3A6B + 米白 #F5F1E8 + 橙红 #E94B3C 强调色"）
 - 字体感觉：衬线/无衬线、几何/书法、加粗/纤细
 - 版式倾向：卡片化 / 留白多 / 极简 / 信息密集
@@ -103,6 +107,7 @@ Seedream 对**中国流行的视觉风格描述**特别敏感，但对**抽象�
 
 {
   "language": "zh",
+  "deck_title": "...",
   "slides": [
     {
       "id": "s1",
@@ -163,11 +168,30 @@ Keep 「」 text under 10 chars (ideal 4-8). Never put instructions like "(with 
 # Schema
 {
   "language": "en",
+  "deck_title": "...",
   "slides": [
     {"id": "s1", "slide_script": "...", "image_prompt": "...", "image_prompt_seedream": "..."}
   ],
   "style_description": "..."
 }`;
+
+/**
+ * Build the user message, optionally injecting page-count constraint.
+ */
+export function buildUserMessage(
+  script: string,
+  language: Language,
+  minSlides?: number,
+  maxSlides?: number,
+): string {
+  if (!minSlides && !maxSlides) return script;
+  const lo = minSlides ?? maxSlides!;
+  const hi = maxSlides ?? minSlides!;
+  if (language === 'en') {
+    return `[Page count requirement] Split this script into ${lo}-${hi} slides.\n\nSource script:\n${script}`;
+  }
+  return `【页数要求】请把这份文稿拆解成 ${lo} 到 ${hi} 页 slide（务必落在此范围内）。\n\n原文稿：\n${script}`;
+}
 
 export function getSystemPrompt(
   language: Language,

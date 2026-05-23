@@ -38,7 +38,24 @@ export async function generateDeck(input: ScriptInput): Promise<Deck> {
     input.language,
     loadApiKeys(),
     input.image_model as ImageProvider,
+    input.min_slides,
+    input.max_slides,
   );
+}
+
+function sanitizeFilename(name: string): string {
+  return (
+    name
+      .replace(/[/\\:*?"<>|]/g, '')
+      .replace(/\s+/g, '-')
+      .replace(/^[-.]+|[-.]+$/g, '')
+      .slice(0, 80) || 'deck'
+  );
+}
+
+export function deriveDeckFilename(deck: Deck): string {
+  const base = (deck.deck_title || '').trim();
+  return `${sanitizeFilename(base)}.pptx`;
 }
 
 export async function generateImages(
@@ -77,6 +94,6 @@ export async function regenerateSlide(
   };
 }
 
-export async function exportDeck(deck: Deck, filename = 'deck.pptx'): Promise<void> {
-  return downloadDeckAsPptx(deck, filename);
+export async function exportDeck(deck: Deck, filename?: string): Promise<void> {
+  return downloadDeckAsPptx(deck, filename || deriveDeckFilename(deck));
 }
