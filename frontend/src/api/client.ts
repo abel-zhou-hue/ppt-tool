@@ -37,6 +37,7 @@ export async function generateDeck(input: ScriptInput): Promise<Deck> {
     input.script,
     input.language,
     loadApiKeys(),
+    input.image_model as ImageProvider,
   );
 }
 

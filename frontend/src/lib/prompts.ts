@@ -1,4 +1,5 @@
 import type { Language } from '../types/deck';
+import type { ImageProvider } from './registry';
 
 const SYSTEM_PROMPT_ZH = `你是 PPT 内容设计师 + 视觉指导。用户给你一份文稿，你的任务是产出一份 JSON，包含三部分内容。
 
@@ -164,8 +165,94 @@ image_prompt is fed directly to the image generation model. **35-60 words each**
   "style_description": "..."
 }`;
 
-export function getSystemPrompt(language: Language): string {
-  return language === 'en' ? SYSTEM_PROMPT_EN : SYSTEM_PROMPT_ZH;
+const SEEDREAM_HINT_ZH = `
+
+---
+
+# ⚠️ 目标图像模型：Seedream（豆包文生图）— 写 image_prompt 必读
+
+Seedream 对**中国流行的视觉风格描述**特别敏感，但对**抽象英文设计术语**理解很弱。
+写本批 image_prompt 时务必采用以下风格：
+
+## 用具体的中国流行词替换抽象英文术语
+
+| 不要用（Seedream 不懂） | 改用（Seedream 熟悉） |
+|---|---|
+| infographic / data viz | 小红书风格科普长图 / 公众号图文卡片 / 中文扁平化海报 |
+| hierarchy / typography | 大号粗体中文标题 + 红色高亮关键词 + 小字说明 |
+| balanced composition | 顶部 logo 栏 + 中部主图文 + 底部装饰栏 |
+| modern minimalist | 深蓝主色 + 米色背景 + 红色强调 + 圆角卡片 |
+| icons / illustrations | 手绘感卡通图标 / 可爱 Q 版插画 / 真实照片+插画混搭 |
+
+## 每个 image_prompt 必须按以下结构详细描述
+
+1. **顶部栏**：logo 位置 / 页码 / 栏目标签（具体到颜色和位置）
+2. **主标题区**：超大粗体中文标题，几个字、什么颜色、有没有红字高亮、副标颜色
+3. **主体内容**：几个圆角卡片、纵向还是横向排列、每个卡片左侧是什么图标、右侧是什么文字
+4. **辅助插画**：角色（医生 / 动物 / 物品）位置、姿态、是真实照片还是卡通插画
+5. **底部栏**：服务图标 / 品牌信息 / 分类标签
+6. **装饰细节**：背景色 / 爪印 / 几何线条 / 渐变色块的具体位置
+
+## Seedream 特别擅长（多用这些关键词）
+
+小红书风、公众号图文风、宠物科普海报风、中国风插画、可爱手绘、
+Q 版卡通人物、真实照片+插画混搭、扁平化、圆角卡片、莫兰迪配色
+
+## Seedream 文字渲染易翻车（避免）
+
+- 不要要求生成超过 8 个字的连续中文长句
+- 关键信息用"大号短标题词 + 图标"组合表达
+- 多用图标符号替代纯文字`;
+
+const GPT_IMAGE_2_HINT_ZH = `
+
+---
+
+# 目标图像模型：gpt-image-2（OpenAI）— 写 image_prompt 提示
+
+gpt-image-2 对抽象设计指令理解力强，可以混用中英文设计词汇。
+
+## 推荐用词
+- 设计原则：infographic style, balanced composition, clear hierarchy, generous whitespace
+- 排版词汇：grid layout, callout boxes, typography hierarchy, color blocking
+- 风格关键词：modern minimalist, editorial design, corporate sleek, professional
+
+## 擅长
+精细排版、复杂版面、长中英文渲染、抽象设计指令理解、严谨商务风`;
+
+const SEEDREAM_HINT_EN = `
+
+---
+
+# Target image model: Seedream — read before writing image_prompt
+
+Seedream responds well to concrete Chinese-popular style vocabulary but poorly to abstract English design jargon. Use concrete layout descriptions (specific objects, positions, colors) rather than abstract design principles.`;
+
+const GPT_IMAGE_2_HINT_EN = `
+
+---
+
+# Target image model: gpt-image-2 — image_prompt notes
+
+gpt-image-2 handles abstract design instructions well. Use design vocabulary freely (infographic, hierarchy, grid, whitespace, etc.)`;
+
+function getProviderHint(language: Language, imageProvider: ImageProvider): string {
+  if (language === 'en') {
+    if (imageProvider === 'seedream') return SEEDREAM_HINT_EN;
+    if (imageProvider === 'gpt-image-2') return GPT_IMAGE_2_HINT_EN;
+    return '';
+  }
+  if (imageProvider === 'seedream') return SEEDREAM_HINT_ZH;
+  if (imageProvider === 'gpt-image-2') return GPT_IMAGE_2_HINT_ZH;
+  return '';
+}
+
+export function getSystemPrompt(
+  language: Language,
+  imageProvider: ImageProvider = 'gpt-image-2',
+): string {
+  const base = language === 'en' ? SYSTEM_PROMPT_EN : SYSTEM_PROMPT_ZH;
+  return base + getProviderHint(language, imageProvider);
 }
 
 /**

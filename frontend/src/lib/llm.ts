@@ -1,6 +1,11 @@
 import type { ApiKeys, Deck, Language } from '../types/deck';
 import { getSystemPrompt } from './prompts';
-import { DEFAULT_DOUBAO_MODEL, ENDPOINTS, type LLMProvider } from './registry';
+import {
+  DEFAULT_DOUBAO_MODEL,
+  ENDPOINTS,
+  type ImageProvider,
+  type LLMProvider,
+} from './registry';
 
 function requireKey(value: string | undefined, name: string): string {
   const v = (value || '').trim();
@@ -19,6 +24,7 @@ interface OpenAICompatCallParams {
   apiKey: string;
   script: string;
   language: Language;
+  imageProvider: ImageProvider;
 }
 
 function extractJSON(content: string): unknown {
@@ -86,7 +92,10 @@ async function callOpenAICompatible(p: OpenAICompatCallParams): Promise<Deck> {
   const body: Record<string, unknown> = {
     model: p.model,
     messages: [
-      { role: 'system', content: getSystemPrompt(p.language) },
+      {
+        role: 'system',
+        content: getSystemPrompt(p.language, p.imageProvider),
+      },
       { role: 'user', content: p.script },
     ],
     temperature: 0.7,
@@ -145,6 +154,7 @@ export async function callLLM(
   script: string,
   language: Language,
   apiKeys: ApiKeys,
+  imageProvider: ImageProvider = 'gpt-image-2',
 ): Promise<Deck> {
   if (provider === 'deepseek') {
     return callOpenAICompatible({
@@ -154,6 +164,7 @@ export async function callLLM(
       apiKey: requireKey(apiKeys.deepseek_api_key, 'DeepSeek API Key'),
       script,
       language,
+      imageProvider,
     });
   }
   if (provider === 'doubao') {
@@ -164,6 +175,7 @@ export async function callLLM(
       apiKey: requireKey(apiKeys.volcano_ark_api_key, '火山方舟 API Key'),
       script,
       language,
+      imageProvider,
     });
   }
   throw new Error(`未知的 LLM provider: ${provider}`);
