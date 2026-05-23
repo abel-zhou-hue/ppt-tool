@@ -41,6 +41,15 @@ image_prompt 直接喂给图像生成模型出图，**每页 150-250 字**，必
   * 概念型内容 → 中心插画 + 围绕标签
 - 装饰元素和具体图标要根据本页内容选择，不要每页都摆相同的元素
 
+## 要求 4：构图必须铺满整张 16:9 画布
+- **每个 image_prompt 必须明确要求**：内容铺满整个 16:9 画面，左右上下均衡分布
+- **绝对禁止**生成"内容只占左半边/上半边，另一半大面积空白"这种失衡构图
+- 如果本页内容信息量少，要用以下方式填满画面：
+  * 放大主元素到合理大小（占画面 40-60%）
+  * 加装饰性元素（背景纹理、几何线条、品牌色块、辅助插画）
+  * 加配套的视觉元素（图标周围加文字标签，标题下加装饰条等）
+- image_prompt 里要明确写"full-bleed 16:9 layout, content spans entire canvas, balanced left-right composition"或中文同义表述
+
 ## image_prompt 推荐结构（每段都要覆盖）
 1. 类型声明（"信息图风格 16:9 PPT 幻灯片"）
 2. 统一视觉风格（复用 style_description 关键词）
@@ -114,6 +123,15 @@ image_prompt is fed directly to the image generation model. **35-60 words each**
   * Conceptual content → central illustration + surrounding labels
 - Decorative elements and specific icons must be chosen based on this page's content, not repeated across pages
 
+## Req 4: Composition MUST fill the entire 16:9 canvas
+- **Every image_prompt must explicitly require**: content fills the entire 16:9 frame, balanced left-right and top-bottom distribution
+- **STRICTLY FORBIDDEN**: any layout where content occupies only left/top half leaving the other half empty/blank
+- If this page has low information density, fill the canvas with:
+  * Scale up main element to reasonable size (40-60% of canvas)
+  * Add decorative elements (background textures, geometric lines, brand color blocks, supporting illustrations)
+  * Add supporting visual elements (text labels around icons, decorative bar under title, etc.)
+- The image_prompt must include phrases like "full-bleed 16:9 layout, content spans entire canvas, balanced left-right composition"
+
 ## Recommended image_prompt structure (cover all):
 1. Type declaration ("Infographic-style 16:9 PPT slide")
 2. Unified visual style (reuse style_description keywords)
@@ -160,17 +178,29 @@ export function buildImagePrompt(
   language: Language,
   hasReference = false,
 ): string {
-  if (!hasReference) return imagePrompt;
+  const fullCanvasClauseZh =
+    `**构图硬约束（必须遵守）**：` +
+    `内容必须铺满整张 16:9 画布，左右上下均衡分布。` +
+    `**绝对禁止**任何一侧（左/右/上/下）出现大面积空白；` +
+    `**绝对禁止**内容堆在画面一半另一半空着的不平衡构图。` +
+    `信息量不足时用装饰元素、背景纹理、辅助插画、品牌色块填充剩余空间，` +
+    `保证 full-bleed full-canvas 视觉。\n\n`;
+  const fullCanvasClauseEn =
+    `**Composition constraint (MUST follow)**: ` +
+    `Content MUST fill the entire 16:9 canvas, balanced both horizontally and vertically. ` +
+    `STRICTLY FORBIDDEN: any large empty area on any side (left/right/top/bottom); ` +
+    `STRICTLY FORBIDDEN: unbalanced compositions where content occupies only half the frame. ` +
+    `If information density is low, fill remaining space with decorative elements, ` +
+    `background textures, supporting illustrations, brand color blocks. ` +
+    `Achieve full-bleed full-canvas visual.\n\n`;
+
+  const refClauseZh = `参考图仅用来保持视觉风格一致（配色、设计语言、氛围）。不要复用参考图里的任何文字、具体版面或内容元素——本页设计如下：\n\n`;
+  const refClauseEn = `Use the reference image ONLY for visual style consistency (colors, design vocabulary, atmosphere). Do NOT copy any text, specific layout, or content elements from the reference — this page's design is described below.\n\n`;
+
   if (language === 'en') {
     return (
-      `Use the reference image ONLY for visual style consistency (colors, design vocabulary, atmosphere). ` +
-      `Do NOT copy any text, specific layout, or content elements from the reference — this page's design is described below.\n\n` +
-      imagePrompt
+      fullCanvasClauseEn + (hasReference ? refClauseEn : '') + imagePrompt
     );
   }
-  return (
-    `参考图仅用来保持视觉风格一致（配色、设计语言、氛围）。` +
-    `不要复用参考图里的任何文字、具体版面或内容元素——本页设计如下：\n\n` +
-    imagePrompt
-  );
+  return fullCanvasClauseZh + (hasReference ? refClauseZh : '') + imagePrompt;
 }
