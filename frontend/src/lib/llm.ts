@@ -47,6 +47,41 @@ function extractJSON(content: string): unknown {
   throw new Error(`无法从 LLM 响应里提取 JSON: ${trimmed.slice(0, 300)}`);
 }
 
+/**
+ * 流式读取 SSE 响应，累积 content，最后从累积文本提取 JSON。
+ * 解决：火山方舟同步请求 60s 网关超时（长输出跑不完会关连接）。
+ */
+async function streamAccumulate(resp: Response): Promise<string> {
+  if (!resp.body) throw new Error('响应没有 body 流');
+  const reader = resp.body.getReader();
+  const decoder = new TextDecoder('utf-8');
+  let accumulated = '';
+  let buffer = '';
+
+  while (true) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    // SSE 用 \n\n 分隔事件，行内用 \n
+    const lines = buffer.split('\n');
+    buffer = lines.pop() || '';
+    for (const raw of lines) {
+      const line = raw.trim();
+      if (!line.startsWith('data:')) continue;
+      const data = line.slice(5).trim();
+      if (data === '[DONE]') continue;
+      try {
+        const chunk = JSON.parse(data);
+        const delta = chunk?.choices?.[0]?.delta?.content;
+        if (typeof delta === 'string') accumulated += delta;
+      } catch {
+        // 偶发不完整 chunk，忽略继续
+      }
+    }
+  }
+  return accumulated;
+}
+
 async function callOpenAICompatible(p: OpenAICompatCallParams): Promise<Deck> {
   const body: Record<string, unknown> = {
     model: p.model,
@@ -56,9 +91,8 @@ async function callOpenAICompatible(p: OpenAICompatCallParams): Promise<Deck> {
     ],
     temperature: 0.7,
     max_tokens: 8192,
+    stream: true,
   };
-  // 只对已验证支持的 provider 加 response_format。
-  // 火山方舟某些 endpoint 对该参数严格，会直接关连接。
   if (p.provider === 'deepseek') {
     body.response_format = { type: 'json_object' };
   }
@@ -70,6 +104,7 @@ async function callOpenAICompatible(p: OpenAICompatCallParams): Promise<Deck> {
       headers: {
         Authorization: `Bearer ${p.apiKey}`,
         'Content-Type': 'application/json',
+        Accept: 'text/event-stream',
       },
       body: JSON.stringify(body),
     });
@@ -78,23 +113,30 @@ async function callOpenAICompatible(p: OpenAICompatCallParams): Promise<Deck> {
     throw new Error(
       `LLM 网络请求失败：${msg}。\n` +
         `常见原因：\n` +
-        `1) 模型名 / endpoint ID 不对（齿轮里检查 "${p.model}"，确认你账号有权限调用）\n` +
-        `2) 输出过长触发网关超时（试试缩短输入文稿）\n` +
-        `3) 服务暂时不可用 / 网络问题`,
+        `1) 模型名 / endpoint ID 不对（齿轮里检查 "${p.model}"）\n` +
+        `2) 网络抖动或 CORS 拦截\n` +
+        `3) 服务暂时不可用`,
     );
   }
   if (!resp.ok) {
     const text = await resp.text();
     throw new Error(`LLM 调用失败 (${resp.status}): ${text.slice(0, 300)}`);
   }
-  const json = await resp.json();
-  const content = json?.choices?.[0]?.message?.content;
-  if (!content) throw new Error('LLM 返回为空');
+
+  let content: string;
   try {
-    return extractJSON(content as string) as Deck;
+    content = await streamAccumulate(resp);
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
-    throw new Error(`LLM 响应解析失败：${msg}`);
+    throw new Error(`LLM 流式读取失败：${msg}`);
+  }
+  if (!content.trim()) throw new Error('LLM 流式响应为空');
+
+  try {
+    return extractJSON(content) as Deck;
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    throw new Error(`LLM 响应解析失败：${msg}\n前 200 字：${content.slice(0, 200)}`);
   }
 }
 
