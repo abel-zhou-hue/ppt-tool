@@ -62,18 +62,27 @@ export function buildImagePrompt(
   slideScript: string,
   style: string,
   language: Language,
+  hasReference = false,
 ): string {
   if (language === 'en') {
+    const refClause = hasReference
+      ? `IMPORTANT: Use the reference image ONLY for visual style (colors, layout, decorative elements, typography feel). The text content on this slide MUST be exactly the content specified below — do NOT copy, repeat, or include any text from the reference image. The new slide should look stylistically similar but have completely different content. `
+      : '';
     return (
       `Render this as a clean, professional 16:9 presentation slide. ` +
+      refClause +
       `Display the following content clearly with appropriate typography, layout, ` +
       `and decorative elements. Avoid clutter; keep text crisp and readable.\n\n` +
       `Visual style: ${style}\n\n` +
       `Content to display on the slide:\n${slideScript}`
     );
   }
+  const refClause = hasReference
+    ? `**重要**：参考图仅用来学习视觉风格（配色、版式、装饰元素、字体感觉），**这一页的文字内容必须完全是下方"页面要显示的内容"**——不要复制、不要重复、不要包含参考图里出现的任何文字。新生成的这一页应该风格相似但内容完全不同。`
+    : '';
   return (
     `把以下内容渲染为一张干净、专业的 16:9 PPT 幻灯片。` +
+    refClause +
     `清晰展示文字内容，配合合适的排版、布局和装饰元素。` +
     `避免拥挤，文字要清晰可读。\n\n` +
     `视觉风格：${style}\n\n` +

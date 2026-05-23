@@ -86,6 +86,9 @@ async function callApimart(
 
 // ====== Seedream (Volcano Engine Ark) - sync ======
 
+// NOTE: Seedream 3.0 要求最少 3,686,400 像素（~2560×1440）。
+// 2K 16:9 用 2560×1440 = 3,686,400 正好达标；
+// 1K 16:9 像素数不足，仅 apimart 能用，Seedream 会 400。
 const SIZE_BY_RES: Record<string, Record<string, string>> = {
   '1k': {
     '16:9': '1536x864',
@@ -93,8 +96,8 @@ const SIZE_BY_RES: Record<string, Record<string, string>> = {
     '1:1': '1024x1024',
   },
   '2k': {
-    '16:9': '2048x1152',
-    '9:16': '1152x2048',
+    '16:9': '2560x1440',
+    '9:16': '1440x2560',
     '1:1': '2048x2048',
   },
   '4k': {
@@ -180,7 +183,7 @@ export async function generateDeckImages(
   const lang = updated.language;
 
   const first = updated.slides[0];
-  const firstPrompt = buildImagePrompt(first.slide_script, style, lang);
+  const firstPrompt = buildImagePrompt(first.slide_script, style, lang, false);
   try {
     const url = await generateImage(
       provider,
@@ -201,7 +204,7 @@ export async function generateDeckImages(
 
   await Promise.all(
     remaining.map(async (slide: Slide) => {
-      const prompt = buildImagePrompt(slide.slide_script, style, lang);
+      const prompt = buildImagePrompt(slide.slide_script, style, lang, !!refs);
       try {
         slide.image_url = await generateImage(
           provider,
