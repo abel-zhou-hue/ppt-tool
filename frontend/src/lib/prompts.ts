@@ -66,26 +66,38 @@ export function buildImagePrompt(
 ): string {
   if (language === 'en') {
     const refClause = hasReference
-      ? `IMPORTANT: Use the reference image ONLY for visual style (colors, layout, decorative elements, typography feel). The text content on this slide MUST be exactly the content specified below — do NOT copy, repeat, or include any text from the reference image. The new slide should look stylistically similar but have completely different content. `
+      ? `IMPORTANT: Use the reference image ONLY for visual style consistency (colors, design vocabulary, atmosphere). The text content and specific layout MUST be different — do NOT copy, repeat, or include any text from the reference image.\n\n`
       : '';
     return (
-      `Render this as a clean, professional 16:9 presentation slide. ` +
+      `Design this as an INFOGRAPHIC-style 16:9 presentation slide (data visualization / card-based design, NOT a plain text slide).\n\n` +
       refClause +
-      `Display the following content clearly with appropriate typography, layout, ` +
-      `and decorative elements. Avoid clutter; keep text crisp and readable.\n\n` +
+      `# Design principles (MUST follow):\n` +
+      `- **Visual-first**: Translate key information into visual elements — icons, illustrations, rounded cards, big number callouts, comparison blocks, simple charts, flow arrows — instead of blocks of plain text\n` +
+      `- **Card-based layout**: Use colored blocks or rounded cards to group different points; vary card sizes for hierarchy\n` +
+      `- **Icon-paired**: Each key point gets a relevant icon (line or filled style)\n` +
+      `- **Strong hierarchy**: Big bold keywords or numbers + small explanatory text; use color contrast to emphasize\n` +
+      `- **Generous whitespace**: Low information density; better to show less than cram everything\n` +
+      `- **Concise text**: Only 3-6 short keywords or phrases visible; avoid long sentences\n` +
+      `- **No headline repetition**: Don't repeat the title twice or fill the slide with a single block of text\n\n` +
       `Visual style: ${style}\n\n` +
-      `Content to display on the slide:\n${slideScript}`
+      `Source content (transform into an infographic — do NOT just typeset it as paragraphs):\n${slideScript}`
     );
   }
   const refClause = hasReference
-    ? `**重要**：参考图仅用来学习视觉风格（配色、版式、装饰元素、字体感觉），**这一页的文字内容必须完全是下方"页面要显示的内容"**——不要复制、不要重复、不要包含参考图里出现的任何文字。新生成的这一页应该风格相似但内容完全不同。`
+    ? `**重要**：参考图仅用来学习视觉风格的一致性（配色、设计语言、氛围）。这一页的**文字内容和具体版面必须不同**——不要复制、不要重复、不要包含参考图里出现的任何文字。\n\n`
     : '';
   return (
-    `把以下内容渲染为一张干净、专业的 16:9 PPT 幻灯片。` +
+    `把以下内容设计为一张**信息图风格**的 16:9 PPT 幻灯片（infographic / 卡片化设计，**不是**普通的文字铺排幻灯片）。\n\n` +
     refClause +
-    `清晰展示文字内容，配合合适的排版、布局和装饰元素。` +
-    `避免拥挤，文字要清晰可读。\n\n` +
+    `# 设计原则（必须遵守）：\n` +
+    `- **可视化优先**：把关键信息转换成视觉元素——图标、插画、圆角卡片、大数字标签、对比色块、简单图表、流程箭头——而不是堆砌文字段落\n` +
+    `- **卡片化布局**：用色块或圆角卡片把不同要点分组；卡片大小可错落形成层次\n` +
+    `- **图标搭配**：每个核心要点都搭配一个相关图标（线性或填充风格均可）\n` +
+    `- **强对比层次**：大字号粗体放关键词或数字，小字号放解释文字，配合颜色对比突出重点\n` +
+    `- **留白充足**：信息密度要低，宁可少展示几个要点，也不要把版面塞满\n` +
+    `- **文字精炼**：可见文字总量控制在 3-6 个短关键词或短语，避免完整长句\n` +
+    `- **不要重复标题**：不要把标题写两遍，不要把整页变成一大段文字\n\n` +
     `视觉风格：${style}\n\n` +
-    `页面要显示的内容：\n${slideScript}`
+    `要表达的原始内容（请转化为信息图，**不要**直接铺排成段落）：\n${slideScript}`
   );
 }
