@@ -13,6 +13,7 @@ function requireKey(value: string | undefined, name: string): string {
 }
 
 interface OpenAICompatCallParams {
+  provider: LLMProvider;
   baseUrl: string;
   model: string;
   apiKey: string;
@@ -20,7 +21,48 @@ interface OpenAICompatCallParams {
   language: Language;
 }
 
+function extractJSON(content: string): unknown {
+  const trimmed = content.trim();
+  // 直接 parse
+  try {
+    return JSON.parse(trimmed);
+  } catch {
+    /* keep going */
+  }
+  // markdown 代码块包裹
+  const fence = trimmed.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+  if (fence) {
+    try {
+      return JSON.parse(fence[1]);
+    } catch {
+      /* keep going */
+    }
+  }
+  // 取第一个 { 到最后一个 }
+  const first = trimmed.indexOf('{');
+  const last = trimmed.lastIndexOf('}');
+  if (first >= 0 && last > first) {
+    return JSON.parse(trimmed.substring(first, last + 1));
+  }
+  throw new Error(`无法从 LLM 响应里提取 JSON: ${trimmed.slice(0, 300)}`);
+}
+
 async function callOpenAICompatible(p: OpenAICompatCallParams): Promise<Deck> {
+  const body: Record<string, unknown> = {
+    model: p.model,
+    messages: [
+      { role: 'system', content: getSystemPrompt(p.language) },
+      { role: 'user', content: p.script },
+    ],
+    temperature: 0.7,
+    max_tokens: 8192,
+  };
+  // 只对已验证支持的 provider 加 response_format。
+  // 火山方舟某些 endpoint 对该参数严格，会直接关连接。
+  if (p.provider === 'deepseek') {
+    body.response_format = { type: 'json_object' };
+  }
+
   let resp: Response;
   try {
     resp = await fetch(`${p.baseUrl}/chat/completions`, {
@@ -29,25 +71,16 @@ async function callOpenAICompatible(p: OpenAICompatCallParams): Promise<Deck> {
         Authorization: `Bearer ${p.apiKey}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        model: p.model,
-        messages: [
-          { role: 'system', content: getSystemPrompt(p.language) },
-          { role: 'user', content: p.script },
-        ],
-        response_format: { type: 'json_object' },
-        temperature: 0.7,
-        max_tokens: 8192,
-      }),
+      body: JSON.stringify(body),
     });
   } catch (e) {
-    // fetch 本身失败（网络断、CORS、服务器关连接）
     const msg = e instanceof Error ? e.message : String(e);
     throw new Error(
       `LLM 网络请求失败：${msg}。\n` +
-        `常见原因：1) 输出过长触发网关超时（试试缩短输入文稿）；` +
-        `2) 模型名不对（在齿轮里检查 Doubao 模型名）；` +
-        `3) 服务暂时不可用`,
+        `常见原因：\n` +
+        `1) 模型名 / endpoint ID 不对（齿轮里检查 "${p.model}"，确认你账号有权限调用）\n` +
+        `2) 输出过长触发网关超时（试试缩短输入文稿）\n` +
+        `3) 服务暂时不可用 / 网络问题`,
     );
   }
   if (!resp.ok) {
@@ -58,9 +91,10 @@ async function callOpenAICompatible(p: OpenAICompatCallParams): Promise<Deck> {
   const content = json?.choices?.[0]?.message?.content;
   if (!content) throw new Error('LLM 返回为空');
   try {
-    return JSON.parse(content) as Deck;
+    return extractJSON(content as string) as Deck;
   } catch (e) {
-    throw new Error(`LLM 返回的不是合法 JSON: ${(content as string).slice(0, 200)}`);
+    const msg = e instanceof Error ? e.message : String(e);
+    throw new Error(`LLM 响应解析失败：${msg}`);
   }
 }
 
@@ -72,6 +106,7 @@ export async function callLLM(
 ): Promise<Deck> {
   if (provider === 'deepseek') {
     return callOpenAICompatible({
+      provider,
       baseUrl: ENDPOINTS.deepseek,
       model: 'deepseek-chat',
       apiKey: requireKey(apiKeys.deepseek_api_key, 'DeepSeek API Key'),
@@ -81,6 +116,7 @@ export async function callLLM(
   }
   if (provider === 'doubao') {
     return callOpenAICompatible({
+      provider,
       baseUrl: ENDPOINTS.volcanoArk,
       model: (apiKeys.doubao_model || '').trim() || DEFAULT_DOUBAO_MODEL,
       apiKey: requireKey(apiKeys.volcano_ark_api_key, '火山方舟 API Key'),
