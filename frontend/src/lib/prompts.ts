@@ -28,6 +28,14 @@ const SYSTEM_PROMPT_ZH = `你是 PPT 内容设计师 + 视觉指导。用户给�
 
 ## 🚨 通用要求（两套 prompt 都必须遵守）
 
+### 🌐 语言硬约束（必读）
+
+整套 PPT 的语言由用户在外部选定（"language" 字段）。
+- 当 language = "zh"：所有「」内文字**必须是简体中文**。不允许出现日文假名、韩文、繁体字、英文长句。可以保留原文稿本身的英文专业术语（如 pH、UPC），但不要主动加英文。
+- 当 language = "en"：所有「」内文字**必须是英文**。绝对不允许出现任何中文字符、日文假名、韩文。
+
+这是图像模型最容易出错的地方（它会把训练数据里的多语言版本混进来），所以两套 image_prompt 都要在文中**明确写出**"all text in English only" / "所有文字必须是简体中文" 类似的硬约束。
+
 ### A. 「」引号约定（最重要！）
 
 要在图上**实际显示为文字**的中文（标题、关键词、标签、要点），**必须**用「中文直角引号」括起来。
@@ -144,6 +152,9 @@ Any description NOT in 「」 is layout/style instruction — must NOT be render
 ✅ Right: "Title 「Key Points」 centered, 3 rounded white cards below, first card has 「Symptom 1」 as title"
 ❌ Wrong: "Title: Key Points (centered). Card 1: Symptom 1 (with stomach icon)"
 
+### 🌐 LANGUAGE HARD CONSTRAINT
+The "language" field is user-selected. When language = "en", ALL 「」 text MUST be English — NO Chinese, Japanese, Korean characters allowed. When language = "zh", ALL 「」 text MUST be Simplified Chinese — NO Japanese kana, Korean, Traditional Chinese long phrases (English technical terms from the source are OK). Each image_prompt must explicitly state the language constraint ("all text in English only" / "所有文字必须是简体中文").
+
 ### B. Faithful to slide_script (no hallucination)
 ### C. Consistent style, varied layouts per page
 ### D. Fill the 16:9 canvas — no half-empty layouts
@@ -222,19 +233,21 @@ export function buildImagePrompt(params: {
     const refClause = hasReference
       ? `Use the reference image ONLY for visual style consistency (colors, design language, atmosphere). Do NOT copy any text, specific layout, or content elements from the reference.\n\n`
       : '';
+    const languageClause = `🌐 LANGUAGE HARD CONSTRAINT: ALL visible text rendered in this image MUST be ENGLISH ONLY. ABSOLUTELY NO Chinese characters, NO Japanese kana/kanji, NO Korean, NO other languages. If you generate any non-English character it is a critical failure.\n\n`;
     const seedreamPrefix =
       provider === 'seedream'
-        ? `⚠️ TEXT CONVENTION: Only Chinese text wrapped in 「」 corner quotes should appear as visible text on the image. ALL other descriptions (icon positions, card colors, layout structure) are drawing instructions and MUST NOT appear as visible text.\n\n[FULL-BLEED CONSTRAINT] Fill the entire 16:9 canvas, no large empty areas on any side.\n\n`
+        ? `⚠️ TEXT CONVENTION: Only text wrapped in 「」 corner quotes should appear as visible text on the image. ALL other descriptions (icon positions, card colors, layout structure) are drawing instructions and MUST NOT appear as visible text.\n\n[FULL-BLEED CONSTRAINT] Fill the entire 16:9 canvas, no large empty areas on any side.\n\n`
         : `[FULL-BLEED] Fill the entire 16:9 canvas, balanced composition, no large empty areas.\n\n`;
-    return refClause + seedreamPrefix + rawPrompt;
+    return languageClause + refClause + seedreamPrefix + rawPrompt;
   }
 
   const refClause = hasReference
     ? `参考图仅用来保持视觉风格一致（配色、设计语言、氛围）。不要复用参考图里的任何文字、具体版面或内容元素。\n\n`
     : '';
+  const languageClause = `🌐 **语言硬约束**：本图所有可见文字**必须是简体中文**。**绝对禁止**出现任何日文假名、韩文、繁体中文长句。可保留原文里出现过的英文专业术语（如 pH、UPC）。生成任何日文/韩文字符都属于严重失败。\n\n`;
   const seedreamPrefix =
     provider === 'seedream'
       ? `⚠️ **文字硬约定**：只有「中文直角引号」内的中文才能作为可见文字渲染到图上。所有其他描述（图标位置、卡片颜色、布局结构、装饰指令）都是**绘图指令**，**绝对不能**作为可见文字出现在图中。重复一遍：「」外的"配 XX 图标""（XX 色）""加上 XX"这种描述全部是给你的指令，不是要写在图上的文字。\n\n【构图硬约束】铺满 16:9 整个画面，禁止任何一侧大面积空白。\n\n`
       : `【构图硬约束】铺满 16:9 整个画面，构图均衡，禁止任何一侧大面积空白。\n\n`;
-  return refClause + seedreamPrefix + rawPrompt;
+  return languageClause + refClause + seedreamPrefix + rawPrompt;
 }
