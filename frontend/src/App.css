@@ -463,6 +463,49 @@ button.ghost:disabled {
   margin-left: auto;
 }
 
+.materials-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+.material-item {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.5rem;
+  background: var(--bg-soft);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.material-item img {
+  width: 52px;
+  height: 52px;
+  object-fit: cover;
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+.material-desc {
+  flex: 1;
+  font-size: 0.82rem;
+  color: var(--text);
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+.material-item button {
+  padding: 0.3rem 0.65rem;
+  font-size: 0.75rem;
+  flex-shrink: 0;
+}
+
 button.cta {
   padding: 0.85rem 2rem;
   font-size: 1rem;

@@ -27,6 +27,7 @@ interface OpenAICompatCallParams {
   imageProvider: ImageProvider;
   minSlides?: number;
   maxSlides?: number;
+  materials?: MaterialMeta[];
 }
 
 function extractJSON(content: string): unknown {
@@ -100,7 +101,13 @@ async function callOpenAICompatible(p: OpenAICompatCallParams): Promise<Deck> {
       },
       {
         role: 'user',
-        content: buildUserMessage(p.script, p.language, p.minSlides, p.maxSlides),
+        content: buildUserMessage(
+          p.script,
+          p.language,
+          p.minSlides,
+          p.maxSlides,
+          p.materials,
+        ),
       },
     ],
     temperature: 0.7,
@@ -162,6 +169,7 @@ export async function callLLM(
   imageProvider: ImageProvider = 'gpt-image-2',
   minSlides?: number,
   maxSlides?: number,
+  materials?: MaterialMeta[],
 ): Promise<Deck> {
   if (provider === 'deepseek') {
     return callOpenAICompatible({
@@ -174,6 +182,7 @@ export async function callLLM(
       imageProvider,
       minSlides,
       maxSlides,
+      materials,
     });
   }
   if (provider === 'doubao') {
@@ -187,6 +196,7 @@ export async function callLLM(
       imageProvider,
       minSlides,
       maxSlides,
+      materials,
     });
   }
   throw new Error(`未知的 LLM provider: ${provider}`);

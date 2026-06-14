@@ -1,4 +1,5 @@
 import type { Language } from '../types/deck';
+import type { MaterialMeta } from './materials';
 import type { ImageProvider } from './registry';
 
 const SYSTEM_PROMPT_ZH = `你是 PPT 内容设计师 + 视觉指导。用户给你一份文稿，你的任务是产出一份 JSON，包含三部分内容。
@@ -10,6 +11,7 @@ const SYSTEM_PROMPT_ZH = `你是 PPT 内容设计师 + 视觉指导。用户给�
 - slide_script: 本页详细内容，**120-200 字**。基于原文稿展开本页要表达的观点、事实、细节，可补充自然过渡和必要解释，但严格不偏离原意、不编造事实数字。
 - image_prompt: 用于 gpt-image-2 出图（150-250 字）。见任务三 A。
 - image_prompt_seedream: 用于 Seedream 出图（**300-450 字，更详细**）。见任务三 B。
+- material_refs: 字符串数组（**可选**）。如果用户在 user message 里提供了【可用素材库】，且本页 slide_script 涉及到某些素材（如某种仪器/设备/物品），把相关素材的 id 加进来。无关的页面留空数组或省略此字段。**只挑真正相关的，不要乱加**。
 
 # 任务二：设计整套 PPT 的统一视觉风格 + 整套主题
 
@@ -121,7 +123,8 @@ Seedream 对**中国流行的视觉风格描述**特别敏感，但对**抽象�
       "id": "s1",
       "slide_script": "...",
       "image_prompt": "...",
-      "image_prompt_seedream": "..."
+      "image_prompt_seedream": "...",
+      "material_refs": ["m_xxx"]
     }
   ],
   "style_description": "..."
@@ -136,6 +139,7 @@ For each slide output **four fields**:
 - slide_script: detailed page content, **30-50 English words (or 120-200 CJK chars)**. Stay strictly faithful — do NOT invent.
 - image_prompt: for gpt-image-2 (40-70 words). See Task 3A.
 - image_prompt_seedream: for Seedream (**80-130 words, more detailed**). See Task 3B.
+- material_refs: optional string array. If the user message provides a Material Library section and this slide's content involves any listed material (instrument/device/object), include the relevant material IDs. Leave empty array if none relevant. **Only include truly relevant ones**.
 
 # Task 2: Design unified visual style
 
@@ -181,7 +185,7 @@ Keep 「」 text under 10 chars (ideal 4-8). Never put instructions like "(with 
   "language": "en",
   "deck_title": "...",
   "slides": [
-    {"id": "s1", "slide_script": "...", "image_prompt": "...", "image_prompt_seedream": "..."}
+    {"id": "s1", "slide_script": "...", "image_prompt": "...", "image_prompt_seedream": "...", "material_refs": ["m_xxx"]}
   ],
   "style_description": "..."
 }`;
@@ -194,14 +198,45 @@ export function buildUserMessage(
   language: Language,
   minSlides?: number,
   maxSlides?: number,
+  materials?: MaterialMeta[],
 ): string {
-  if (!minSlides && !maxSlides) return script;
-  const lo = minSlides ?? maxSlides!;
-  const hi = maxSlides ?? minSlides!;
-  if (language === 'en') {
-    return `[Page count requirement] Split this script into ${lo}-${hi} slides.\n\nSource script:\n${script}`;
+  const parts: string[] = [];
+
+  if (materials && materials.length > 0) {
+    if (language === 'en') {
+      const lines = materials
+        .map((m) => `- id: "${m.id}"  description: ${m.description}`)
+        .join('\n');
+      parts.push(
+        `[Material Library] If a slide's content involves any of these materials, include the relevant ids in that slide's material_refs array. Skip irrelevant pages.\n${lines}`,
+      );
+    } else {
+      const lines = materials
+        .map((m) => `- id: "${m.id}"  描述: ${m.description}`)
+        .join('\n');
+      parts.push(
+        `【可用素材库】如果某页 slide_script 涉及到下列任一素材，把对应 id 加到该页的 material_refs 数组里。**只挑真正相关的**，无关的页面不要加。\n${lines}`,
+      );
+    }
   }
-  return `【页数要求】请把这份文稿拆解成 ${lo} 到 ${hi} 页 slide（务必落在此范围内）。\n\n原文稿：\n${script}`;
+
+  if (minSlides || maxSlides) {
+    const lo = minSlides ?? maxSlides!;
+    const hi = maxSlides ?? minSlides!;
+    if (language === 'en') {
+      parts.push(`[Page count requirement] Split this script into ${lo}-${hi} slides.`);
+    } else {
+      parts.push(`【页数要求】请把这份文稿拆解成 ${lo} 到 ${hi} 页 slide（务必落在此范围内）。`);
+    }
+  }
+
+  if (language === 'en') {
+    parts.push(`Source script:\n${script}`);
+  } else {
+    parts.push(`原文稿：\n${script}`);
+  }
+
+  return parts.join('\n\n');
 }
 
 export function getSystemPrompt(
@@ -222,9 +257,17 @@ export function buildImagePrompt(params: {
   provider: ImageProvider;
   hasReference?: boolean;
   hasLogo?: boolean;
+  hasMaterials?: boolean;
 }): string {
-  const { imagePromptGpt, imagePromptSeedream, language, provider, hasReference, hasLogo } =
-    params;
+  const {
+    imagePromptGpt,
+    imagePromptSeedream,
+    language,
+    provider,
+    hasReference,
+    hasLogo,
+    hasMaterials,
+  } = params;
 
   const rawPrompt =
     provider === 'seedream' && imagePromptSeedream
@@ -237,6 +280,12 @@ export function buildImagePrompt(params: {
   const logoClauseZh = hasLogo
     ? `🏷️ **品牌 logo 强制要求**：参考图中有一张是用户的品牌 logo，**必须**把这个 logo 原样（不变色、不变形）放到幻灯片**左上角**（约占画面宽度 8-12%）。logo 要看起来是专业地嵌入设计，不能拉伸、不能变色、不能更改设计。\n\n`
     : '';
+  const materialsClauseEn = hasMaterials
+    ? `📦 INSTRUMENT/EQUIPMENT MATERIALS: One or more reference images are real photos of instruments/equipment relevant to THIS page's content. You MUST visually incorporate them (or visually faithful renditions) into the design — don't ignore them, don't invent different-looking versions. Preserve their actual shape, color, and identifying features.\n\n`
+    : '';
+  const materialsClauseZh = hasMaterials
+    ? `📦 **仪器/设备素材**：参考图里有一张或多张是与**本页内容相关**的真实仪器/设备照片。**必须**把它们（或视觉上忠实的呈现）融入设计——不能忽略、不能瞎画一个完全不一样的版本。保留素材的真实形状、颜色和识别特征。\n\n`
+    : '';
 
   if (language === 'en') {
     const refClause = hasReference
@@ -247,7 +296,7 @@ export function buildImagePrompt(params: {
       provider === 'seedream'
         ? `⚠️ TEXT CONVENTION: Only text wrapped in 「」 corner quotes should appear as visible text on the image. ALL other descriptions (icon positions, card colors, layout structure) are drawing instructions and MUST NOT appear as visible text.\n\n[FULL-BLEED CONSTRAINT] Fill the entire 16:9 canvas, no large empty areas on any side.\n\n`
         : `[FULL-BLEED] Fill the entire 16:9 canvas, balanced composition, no large empty areas.\n\n`;
-    return logoClauseEn + languageClause + refClause + seedreamPrefix + rawPrompt;
+    return materialsClauseEn + logoClauseEn + languageClause + refClause + seedreamPrefix + rawPrompt;
   }
 
   const refClause = hasReference
@@ -258,5 +307,5 @@ export function buildImagePrompt(params: {
     provider === 'seedream'
       ? `⚠️ **文字硬约定**：只有「中文直角引号」内的中文才能作为可见文字渲染到图上。所有其他描述（图标位置、卡片颜色、布局结构、装饰指令）都是**绘图指令**，**绝对不能**作为可见文字出现在图中。重复一遍：「」外的"配 XX 图标""（XX 色）""加上 XX"这种描述全部是给你的指令，不是要写在图上的文字。\n\n【构图硬约束】铺满 16:9 整个画面，禁止任何一侧大面积空白。\n\n`
       : `【构图硬约束】铺满 16:9 整个画面，构图均衡，禁止任何一侧大面积空白。\n\n`;
-  return logoClauseZh + languageClause + refClause + seedreamPrefix + rawPrompt;
+  return materialsClauseZh + logoClauseZh + languageClause + refClause + seedreamPrefix + rawPrompt;
 }

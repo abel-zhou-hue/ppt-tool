@@ -13,6 +13,13 @@ import {
 } from './api/client';
 import { extractTextFromFile } from './lib/docparse';
 import { clearLogo, fileToDataUri, loadLogo, saveLogo } from './lib/logo';
+import {
+  type Material,
+  deleteMaterial,
+  fileToMaterial,
+  listMaterials,
+  saveMaterial,
+} from './lib/materials';
 
 const EXAMPLES: { tag: string; title: string; script: string }[] = [
   {
@@ -693,6 +700,8 @@ function SettingsModal({
 
         <LogoSection />
 
+        <MaterialsSection />
+
         <div className="modal-actions">
           <button className="ghost" onClick={onCancel}>
             取消
@@ -700,6 +709,96 @@ function SettingsModal({
           <button onClick={handleSave}>保存</button>
         </div>
       </div>
+    </div>
+  );
+}
+
+function MaterialsSection() {
+  const [items, setItems] = useState<Material[]>([]);
+  const [desc, setDesc] = useState('');
+  const [err, setErr] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    listMaterials().then(setItems).catch((e) => setErr(String(e)));
+  }, []);
+
+  async function onFile(file: File) {
+    setErr(null);
+    setBusy(true);
+    try {
+      const m = await fileToMaterial(file, desc);
+      await saveMaterial(m);
+      const all = await listMaterials();
+      setItems(all);
+      setDesc('');
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function onDelete(id: string) {
+    await deleteMaterial(id);
+    const all = await listMaterials();
+    setItems(all);
+  }
+
+  return (
+    <div className="modal-section">
+      <h4>仪器素材库（智能匹配，按需注入）</h4>
+      <p className="modal-section-hint">
+        上传仪器/设备真实照片 + 一句简短描述。LLM 会根据每页内容判断哪些素材相关，
+        只把相关的素材作为参考图传给图像模型。已上传 {items.length} 张。
+      </p>
+
+      {items.length > 0 && (
+        <div className="materials-list">
+          {items.map((m) => (
+            <div key={m.id} className="material-item">
+              <img src={m.data_uri} alt={m.description} />
+              <div className="material-desc">{m.description}</div>
+              <button
+                className="ghost"
+                type="button"
+                onClick={() => onDelete(m.id)}
+              >
+                删除
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <label style={{ marginTop: '0.6rem' }}>
+        <span>描述（先填这个，再选文件上传）</span>
+        <input
+          type="text"
+          placeholder="如：尿试纸条，含 pH/比重/红血球指标块"
+          value={desc}
+          onChange={(e) => setDesc(e.target.value)}
+        />
+      </label>
+      <label className="upload-btn" style={{ marginTop: '0.5rem' }}>
+        <input
+          type="file"
+          accept="image/png,image/jpeg,image/webp"
+          style={{ display: 'none' }}
+          disabled={busy || !desc.trim()}
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            if (f) onFile(f);
+            e.target.value = '';
+          }}
+        />
+        📷 {busy ? '上传中……' : desc.trim() ? '上传素材' : '请先填描述'}
+      </label>
+      {err && (
+        <div className="error" style={{ marginTop: '0.6rem' }}>
+          {err}
+        </div>
+      )}
     </div>
   );
 }

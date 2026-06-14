@@ -1,6 +1,7 @@
 import type { ApiKeys, Deck, ScriptInput } from '../types/deck';
 import { generateDeckImages, generateSingleSlideImage } from '../lib/imagegen';
 import { loadLogo } from '../lib/logo';
+import { listMaterials, toMap, toMeta } from '../lib/materials';
 import { callLLM } from '../lib/llm';
 import { downloadDeckAsPptx } from '../lib/pptx';
 import {
@@ -33,6 +34,7 @@ export async function listImageModels(): Promise<string[]> {
 }
 
 export async function generateDeck(input: ScriptInput): Promise<Deck> {
+  const materials = await listMaterials();
   return callLLM(
     input.llm_model as LLMProvider,
     input.script,
@@ -41,6 +43,7 @@ export async function generateDeck(input: ScriptInput): Promise<Deck> {
     input.image_model as ImageProvider,
     input.min_slides,
     input.max_slides,
+    materials.length ? toMeta(materials) : undefined,
   );
 }
 
@@ -63,11 +66,13 @@ export async function generateImages(
   deck: Deck,
   imageModel: string,
 ): Promise<Deck> {
+  const materials = await listMaterials();
   return generateDeckImages(
     deck,
     imageModel as ImageProvider,
     loadApiKeys(),
     loadLogo(),
+    materials.length ? toMap(materials) : undefined,
   );
 }
 
@@ -79,6 +84,7 @@ export async function regenerateSlide(
   const slide = deck.slides[slideIndex];
   if (!slide) throw new Error(`slide index ${slideIndex} out of range`);
   const isAnchor = slideIndex === 0;
+  const materials = await listMaterials();
 
   const newUrl = await generateSingleSlideImage({
     slide,
@@ -89,6 +95,7 @@ export async function regenerateSlide(
     provider: imageModel as ImageProvider,
     apiKeys: loadApiKeys(),
     logoDataUri: loadLogo(),
+    materialsByID: materials.length ? toMap(materials) : undefined,
   });
 
   const newSlides = [...deck.slides];

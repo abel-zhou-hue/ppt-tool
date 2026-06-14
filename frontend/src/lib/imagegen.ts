@@ -183,6 +183,7 @@ export async function generateSingleSlideImage(params: {
   provider: ImageProvider;
   apiKeys: ApiKeys;
   logoDataUri?: string | null;
+  materialsByID?: Map<string, { data_uri: string }>;
 }): Promise<string> {
   const {
     slide,
@@ -193,20 +194,31 @@ export async function generateSingleSlideImage(params: {
     provider,
     apiKeys,
     logoDataUri,
+    materialsByID,
   } = params;
 
-  // 组装 reference images：anchor（非第一页时）+ logo（如果有）
-  // Seedream 只接受 1 个 ref，logo 优先于 anchor（品牌一致性比风格一致性更重要）
-  const refsArray: string[] = [];
-  if (!isAnchor && anchorImageUrl) refsArray.push(anchorImageUrl);
-  if (logoDataUri) {
-    if (provider === 'seedream') {
-      // Seedream 单 ref：logo 替换 anchor
-      refsArray.length = 0;
-      refsArray.push(logoDataUri);
-    } else {
-      refsArray.push(logoDataUri);
+  // 本页相关的素材（按 slide.material_refs 查表）
+  const materialUris: string[] = [];
+  if (slide.material_refs && materialsByID) {
+    for (const id of slide.material_refs) {
+      const m = materialsByID.get(id);
+      if (m) materialUris.push(m.data_uri);
     }
+  }
+
+  // 组装 reference images
+  // Seedream 只接受 1 个 ref：优先级 material > logo > anchor
+  // gpt-image-2 上限 16：material 优先放前面，然后 anchor 和 logo
+  let refsArray: string[] = [];
+  if (provider === 'seedream') {
+    if (materialUris.length) refsArray.push(materialUris[0]);
+    else if (logoDataUri) refsArray.push(logoDataUri);
+    else if (!isAnchor && anchorImageUrl) refsArray.push(anchorImageUrl);
+  } else {
+    refsArray.push(...materialUris);
+    if (!isAnchor && anchorImageUrl) refsArray.push(anchorImageUrl);
+    if (logoDataUri) refsArray.push(logoDataUri);
+    refsArray = refsArray.slice(0, 16);
   }
   const refs = refsArray.length ? refsArray : undefined;
 
@@ -221,6 +233,7 @@ export async function generateSingleSlideImage(params: {
     provider,
     hasReference: !!refs,
     hasLogo: !!logoDataUri,
+    hasMaterials: materialUris.length > 0,
   });
   return generateImage(
     provider,
@@ -237,6 +250,7 @@ export async function generateDeckImages(
   provider: ImageProvider,
   apiKeys: ApiKeys,
   logoDataUri?: string | null,
+  materialsByID?: Map<string, { data_uri: string }>,
 ): Promise<Deck> {
   if (!deck.slides.length) return deck;
   const updated: Deck = { ...deck, slides: deck.slides.map((s) => ({ ...s })) };
@@ -254,6 +268,7 @@ export async function generateDeckImages(
       provider,
       apiKeys,
       logoDataUri,
+      materialsByID,
     });
     first.image_url = url;
     updated.anchor_image_url = url;
@@ -276,6 +291,7 @@ export async function generateDeckImages(
           provider,
           apiKeys,
           logoDataUri,
+          materialsByID,
         });
       } catch (e) {
         console.error(`Slide ${slide.id} image gen failed:`, e);

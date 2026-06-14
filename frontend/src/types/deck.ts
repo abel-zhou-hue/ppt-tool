@@ -5,6 +5,7 @@ export interface Slide {
   slide_script: string;
   image_prompt: string;
   image_prompt_seedream?: string;
+  material_refs?: string[];
   image_url?: string | null;
 }
 
