@@ -344,6 +344,14 @@ function App() {
             )}
           </section>
 
+          <section>
+            <LogoSection />
+          </section>
+
+          <section>
+            <MaterialsSection />
+          </section>
+
           {deck && (
             <section>
               <h3 className="sec-title">视觉风格描述</h3>
@@ -434,8 +442,6 @@ function App() {
               </div>
 
               {error && <div className="error">错误：{error}</div>}
-
-              <MaterialsSection />
 
               <div className="examples">
                 <h3 className="sec-title">没有现成文稿？试试这些示例</h3>
@@ -701,8 +707,6 @@ function SettingsModal({
           </label>
         </div>
 
-        <LogoSection />
-
         <div className="modal-actions">
           <button className="ghost" onClick={onCancel}>
             取消
@@ -754,20 +758,15 @@ function MaterialsSection() {
   }
 
   return (
-    <section className="materials-card">
+    <>
       <div className="materials-card-head">
-        <h3 className="sec-title">本次 PPT 的仪器素材（可选）</h3>
+        <h3 className="sec-title">仪器素材（{items.length}）</h3>
         {items.length > 0 && (
           <button className="ghost" type="button" onClick={onClearAll}>
-            清空全部
+            清空
           </button>
         )}
       </div>
-      <p className="hint-small">
-        上传跟本次主题相关的仪器/设备真实照片 + 一句简短描述。
-        LLM 会判断每页内容涉及到哪些素材，只把相关的传给图像模型作为参考图。
-        切换主题前点"清空全部"。
-      </p>
 
       {items.length > 0 && (
         <div className="materials-list">
@@ -780,38 +779,39 @@ function MaterialsSection() {
                 type="button"
                 onClick={() => onDelete(m.id)}
               >
-                删除
+                ×
               </button>
             </div>
           ))}
         </div>
       )}
 
-      <div className="materials-upload-row">
+      <input
+        type="text"
+        className="material-desc-input"
+        placeholder="描述：如尿试纸条 含 pH/比重指标"
+        value={desc}
+        onChange={(e) => setDesc(e.target.value)}
+      />
+      <label className="upload-btn" style={{ marginTop: '0.4rem' }}>
         <input
-          type="text"
-          className="material-desc-input"
-          placeholder="先填描述，如：尿试纸条，含 pH/比重/红血球指标块"
-          value={desc}
-          onChange={(e) => setDesc(e.target.value)}
+          type="file"
+          accept="image/png,image/jpeg,image/webp"
+          style={{ display: 'none' }}
+          disabled={busy || !desc.trim()}
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            if (f) onFile(f);
+            e.target.value = '';
+          }}
         />
-        <label className="upload-btn">
-          <input
-            type="file"
-            accept="image/png,image/jpeg,image/webp"
-            style={{ display: 'none' }}
-            disabled={busy || !desc.trim()}
-            onChange={(e) => {
-              const f = e.target.files?.[0];
-              if (f) onFile(f);
-              e.target.value = '';
-            }}
-          />
-          📷 {busy ? '上传中……' : desc.trim() ? '上传素材' : '请先填描述'}
-        </label>
-      </div>
+        📷 {busy ? '上传中……' : desc.trim() ? '上传素材' : '请先填描述'}
+      </label>
+      <p className="sidebar-hint">
+        相关素材自动按页匹配；改完素材后可"重新生成所有图像"。
+      </p>
       {err && <div className="error">{err}</div>}
-    </section>
+    </>
   );
 }
 
@@ -831,12 +831,8 @@ function LogoSection() {
   }
 
   return (
-    <div className="modal-section">
-      <h4>品牌 Logo（生成图时融入设计）</h4>
-      <p className="modal-section-hint">
-        上传一张 PNG/JPG（建议透明背景，≤ 1MB）。每次生成图像时会作为参考图传给图像模型，要求放在左上角。
-        融入设计 = 模型会"画出类似的 logo"，不保证 100% 像素级一致。
-      </p>
+    <>
+      <h3 className="sec-title">品牌 Logo</h3>
       {logo && (
         <div className="logo-preview">
           <img src={logo} alt="logo preview" />
@@ -865,12 +861,15 @@ function LogoSection() {
         />
         🏷️ {logo ? '替换 Logo' : '上传 Logo'}
       </label>
+      <p className="sidebar-hint">
+        ≤ 1MB。出图时作为参考传给模型，要求放左上角。融入设计但不保证像素级一致。
+      </p>
       {err && (
-        <div className="error" style={{ marginTop: '0.6rem' }}>
+        <div className="error" style={{ marginTop: '0.5rem' }}>
           {err}
         </div>
       )}
-    </div>
+    </>
   );
 }
 

@@ -506,40 +506,27 @@ button.ghost:disabled {
   flex-shrink: 0;
 }
 
-.materials-card {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  padding: 1rem 1.2rem;
-  margin: 1.25rem 0;
-  box-shadow: var(--shadow-sm);
-}
-
 .materials-card-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.75rem;
-  margin-bottom: 0.4rem;
+  gap: 0.5rem;
+  margin-bottom: 0.6rem;
 }
 
 .materials-card-head .sec-title {
   margin: 0;
 }
 
-.materials-upload-row {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-  margin-top: 0.75rem;
-  flex-wrap: wrap;
+.materials-card-head button.ghost {
+  padding: 0.25rem 0.55rem;
+  font-size: 0.72rem;
 }
 
 .material-desc-input {
-  flex: 1;
-  min-width: 240px;
-  padding: 0.5rem 0.75rem;
-  font-size: 0.85rem;
+  width: 100%;
+  padding: 0.5rem 0.7rem;
+  font-size: 0.82rem;
   border: 1px solid var(--border);
   border-radius: 8px;
   font-family: inherit;
@@ -551,6 +538,38 @@ button.ghost:disabled {
   outline: none;
   border-color: var(--primary);
   box-shadow: 0 0 0 3px var(--primary-soft);
+}
+
+/* Sidebar 紧凑版 material-item */
+.sidebar .material-item img {
+  width: 36px;
+  height: 36px;
+}
+
+.sidebar .material-desc {
+  font-size: 0.76rem;
+  line-height: 1.35;
+}
+
+.sidebar .material-item button {
+  padding: 0.2rem 0.45rem;
+  font-size: 0.85rem;
+  line-height: 1;
+}
+
+.sidebar .materials-list {
+  max-height: 200px;
+}
+
+/* Sidebar 紧凑版 logo-preview */
+.sidebar .logo-preview img {
+  width: 48px;
+  height: 48px;
+}
+
+.sidebar .logo-preview button {
+  padding: 0.3rem 0.6rem;
+  font-size: 0.75rem;
 }
 
 button.cta {
