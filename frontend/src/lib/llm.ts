@@ -1,4 +1,5 @@
 import type { ApiKeys, Deck, Language } from '../types/deck';
+import type { MaterialMeta } from './materials';
 import { buildUserMessage, getSystemPrompt } from './prompts';
 import {
   DEFAULT_DOUBAO_MODEL,
