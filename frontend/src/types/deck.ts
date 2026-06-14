@@ -33,4 +33,5 @@ export interface ApiKeys {
   doubao_model?: string;
   seedream_t2i_model?: string;
   seedream_i2i_model?: string;
+  cors_proxy_url?: string;
 }

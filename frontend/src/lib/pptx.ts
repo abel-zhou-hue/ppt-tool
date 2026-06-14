@@ -1,12 +1,22 @@
 import pptxgen from 'pptxgenjs';
 import type { Deck } from '../types/deck';
+import { loadApiKeys } from '../api/client';
 
 const SLIDE_W = 13.333;
 const SLIDE_H = 7.5;
 
-async function fetchImageAsDataUri(url: string): Promise<string> {
+function viaProxy(url: string, proxy: string): string {
+  // 支持两种代理形式：
+  //   1) 单参数形式：https://my-proxy.workers.dev/?url=<target>
+  //   2) 前缀形式：https://my-proxy.workers.dev/proxy?url=<target>
+  // 用户填的 proxy 末尾可能带或不带 / 或 ?；统一处理
+  const sep = proxy.includes('?') ? '&' : '?';
+  return `${proxy}${sep}url=${encodeURIComponent(url)}`;
+}
+
+async function fetchAsDataUri(url: string): Promise<string> {
   const resp = await fetch(url);
-  if (!resp.ok) throw new Error(`下载图像失败 (${resp.status}): ${url}`);
+  if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
   const blob = await resp.blob();
   return await new Promise<string>((resolve, reject) => {
     const reader = new FileReader();
@@ -14,6 +24,24 @@ async function fetchImageAsDataUri(url: string): Promise<string> {
     reader.onerror = () => reject(reader.error);
     reader.readAsDataURL(blob);
   });
+}
+
+/**
+ * 尝试直连；失败时回落到 CORS 代理（如果用户配了）。
+ */
+async function fetchImageAsDataUri(url: string): Promise<string> {
+  try {
+    return await fetchAsDataUri(url);
+  } catch (e) {
+    const proxy = (loadApiKeys().cors_proxy_url || '').trim();
+    if (!proxy) {
+      const msg = e instanceof Error ? e.message : String(e);
+      throw new Error(
+        `下载失败（CORS 受限？）：${msg}。Seedream 图片需要在 Settings 里配 CORS 代理才能嵌入 PPT。`,
+      );
+    }
+    return await fetchAsDataUri(viaProxy(url, proxy));
+  }
 }
 
 function renderFallback(slide: pptxgen.Slide, text: string, prefix: string): void {

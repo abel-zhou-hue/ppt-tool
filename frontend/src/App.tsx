@@ -285,7 +285,18 @@ function App() {
                 <span>语言</span>
                 <select
                   value={language}
-                  onChange={(e) => setLanguage(e.target.value as Language)}
+                  onChange={(e) => {
+                    const next = e.target.value as Language;
+                    if (deck && deck.language !== next) {
+                      const ok = confirm(
+                        `当前 deck 是 ${deck.language === 'zh' ? '中文' : '英文'}，` +
+                          `图像 prompt 都按它写好的。切换语言需要重新生成逐字稿（清空当前 deck）。\n\n确认切换？`,
+                      );
+                      if (!ok) return;
+                      setDeck(null);
+                    }
+                    setLanguage(next);
+                  }}
                 >
                   <option value="zh">中文</option>
                   <option value="en">English</option>
@@ -703,6 +714,66 @@ function SettingsModal({
               placeholder="sk-..."
               value={draft.apimart_api_key || ''}
               onChange={(e) => update('apimart_api_key', e.target.value)}
+            />
+          </label>
+        </div>
+
+        <div className="modal-section">
+          <h4>CORS 代理（可选，解决 Seedream 图片下载嵌入 PPT 失败）</h4>
+          <p className="modal-section-hint">
+            Seedream 生成的图片在火山方舟 TOS 存储，**不开 CORS**，浏览器 fetch
+            不到 bytes → 下载 PPT 时图嵌入失败。如果只用 gpt-image-2 可以留空。
+            <br />
+            <br />
+            <strong>怎么部署免费代理（5 分钟）</strong>：
+            <ol style={{ margin: '0.4rem 0 0.4rem 1.2rem' }}>
+              <li>
+                注册{' '}
+                <a
+                  href="https://workers.cloudflare.com"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Cloudflare Workers
+                </a>{' '}
+                免费帐号
+              </li>
+              <li>
+                Create Worker → 粘贴下面代码 → Deploy → 拿到{' '}
+                <code>https://xxx.workers.dev</code>
+              </li>
+              <li>填到下方输入框</li>
+            </ol>
+            <details style={{ marginTop: '0.4rem' }}>
+              <summary style={{ cursor: 'pointer' }}>展开 Worker 代码</summary>
+              <pre
+                style={{
+                  background: 'var(--bg-soft)',
+                  padding: '0.6rem',
+                  borderRadius: 6,
+                  fontSize: '0.75rem',
+                  overflow: 'auto',
+                }}
+              >{`export default {
+  async fetch(req) {
+    const u = new URL(req.url);
+    const target = u.searchParams.get('url');
+    if (!target) return new Response('missing url', { status: 400 });
+    const r = await fetch(target);
+    const h = new Headers(r.headers);
+    h.set('Access-Control-Allow-Origin', '*');
+    return new Response(r.body, { status: r.status, headers: h });
+  }
+};`}</pre>
+            </details>
+          </p>
+          <label>
+            <span>代理 URL</span>
+            <input
+              type="text"
+              placeholder="https://xxx.workers.dev"
+              value={draft.cors_proxy_url || ''}
+              onChange={(e) => update('cors_proxy_url', e.target.value)}
             />
           </label>
         </div>
