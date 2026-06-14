@@ -182,9 +182,34 @@ export async function generateSingleSlideImage(params: {
   isAnchor: boolean;
   provider: ImageProvider;
   apiKeys: ApiKeys;
+  logoDataUri?: string | null;
 }): Promise<string> {
-  const { slide, styleDescription, language, anchorImageUrl, isAnchor, provider, apiKeys } = params;
-  const refs = !isAnchor && anchorImageUrl ? [anchorImageUrl] : undefined;
+  const {
+    slide,
+    styleDescription,
+    language,
+    anchorImageUrl,
+    isAnchor,
+    provider,
+    apiKeys,
+    logoDataUri,
+  } = params;
+
+  // 组装 reference images：anchor（非第一页时）+ logo（如果有）
+  // Seedream 只接受 1 个 ref，logo 优先于 anchor（品牌一致性比风格一致性更重要）
+  const refsArray: string[] = [];
+  if (!isAnchor && anchorImageUrl) refsArray.push(anchorImageUrl);
+  if (logoDataUri) {
+    if (provider === 'seedream') {
+      // Seedream 单 ref：logo 替换 anchor
+      refsArray.length = 0;
+      refsArray.push(logoDataUri);
+    } else {
+      refsArray.push(logoDataUri);
+    }
+  }
+  const refs = refsArray.length ? refsArray : undefined;
+
   const fallback = fallbackPrompt(slide, styleDescription);
   const promptGpt = (slide.image_prompt || '').trim() || fallback;
   const promptSeedream = (slide.image_prompt_seedream || '').trim() || undefined;
@@ -195,6 +220,7 @@ export async function generateSingleSlideImage(params: {
     language,
     provider,
     hasReference: !!refs,
+    hasLogo: !!logoDataUri,
   });
   return generateImage(
     provider,
@@ -210,6 +236,7 @@ export async function generateDeckImages(
   deck: Deck,
   provider: ImageProvider,
   apiKeys: ApiKeys,
+  logoDataUri?: string | null,
 ): Promise<Deck> {
   if (!deck.slides.length) return deck;
   const updated: Deck = { ...deck, slides: deck.slides.map((s) => ({ ...s })) };
@@ -226,6 +253,7 @@ export async function generateDeckImages(
       isAnchor: true,
       provider,
       apiKeys,
+      logoDataUri,
     });
     first.image_url = url;
     updated.anchor_image_url = url;
@@ -247,6 +275,7 @@ export async function generateDeckImages(
           isAnchor: false,
           provider,
           apiKeys,
+          logoDataUri,
         });
       } catch (e) {
         console.error(`Slide ${slide.id} image gen failed:`, e);

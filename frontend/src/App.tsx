@@ -11,6 +11,8 @@ import {
   regenerateSlide,
   saveApiKeys,
 } from './api/client';
+import { extractTextFromFile } from './lib/docparse';
+import { clearLogo, fileToDataUri, loadLogo, saveLogo } from './lib/logo';
 
 const EXAMPLES: { tag: string; title: string; script: string }[] = [
   {
@@ -67,6 +69,7 @@ function App() {
   const [pageRange, setPageRange] = useState<'auto' | 'short' | 'medium' | 'long' | 'xlong'>(
     'auto',
   );
+  const [parsing, setParsing] = useState(false);
   const [llmOptions, setLlmOptions] = useState<string[]>([]);
   const [imageOptions, setImageOptions] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
@@ -87,6 +90,20 @@ function App() {
       .catch((e) => console.warn('listImageModels', e));
     setApiKeysConfigured(loadApiKeys());
   }, []);
+
+  async function handleFileUpload(file: File) {
+    setParsing(true);
+    setError(null);
+    try {
+      const text = await extractTextFromFile(file);
+      if (!text) throw new Error('文档解析出的文本为空');
+      setScript(text);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setParsing(false);
+    }
+  }
 
   async function handleGenerate() {
     setLoading(true);
@@ -385,12 +402,26 @@ function App() {
                 <button
                   className="cta"
                   onClick={handleGenerate}
-                  disabled={loading || !script.trim()}
+                  disabled={loading || parsing || !script.trim()}
                 >
                   {loading ? '生成中……' : '生成逐字稿 →'}
                 </button>
+                <label className="upload-btn">
+                  <input
+                    type="file"
+                    accept=".docx,.pdf,.pptx,.txt,.md"
+                    style={{ display: 'none' }}
+                    onChange={(e) => {
+                      const f = e.target.files?.[0];
+                      if (f) handleFileUpload(f);
+                      e.target.value = '';
+                    }}
+                    disabled={parsing || loading}
+                  />
+                  📎 {parsing ? '解析中……' : '上传文档'}
+                </label>
                 <span className="cta-hint">
-                  {script.length > 0 ? `${script.length} 字` : '至少几句话'}
+                  {script.length > 0 ? `${script.length} 字` : '或上传 Word/PDF/PPT'}
                 </span>
               </div>
 
@@ -660,6 +691,8 @@ function SettingsModal({
           </label>
         </div>
 
+        <LogoSection />
+
         <div className="modal-actions">
           <button className="ghost" onClick={onCancel}>
             取消
@@ -667,6 +700,65 @@ function SettingsModal({
           <button onClick={handleSave}>保存</button>
         </div>
       </div>
+    </div>
+  );
+}
+
+function LogoSection() {
+  const [logo, setLogo] = useState<string | null>(loadLogo());
+  const [err, setErr] = useState<string | null>(null);
+
+  async function onFile(file: File) {
+    setErr(null);
+    try {
+      const uri = await fileToDataUri(file);
+      saveLogo(uri);
+      setLogo(uri);
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : String(e));
+    }
+  }
+
+  return (
+    <div className="modal-section">
+      <h4>品牌 Logo（生成图时融入设计）</h4>
+      <p className="modal-section-hint">
+        上传一张 PNG/JPG（建议透明背景，≤ 1MB）。每次生成图像时会作为参考图传给图像模型，要求放在左上角。
+        融入设计 = 模型会"画出类似的 logo"，不保证 100% 像素级一致。
+      </p>
+      {logo && (
+        <div className="logo-preview">
+          <img src={logo} alt="logo preview" />
+          <button
+            className="ghost"
+            type="button"
+            onClick={() => {
+              clearLogo();
+              setLogo(null);
+            }}
+          >
+            移除
+          </button>
+        </div>
+      )}
+      <label className="upload-btn" style={{ marginTop: '0.5rem' }}>
+        <input
+          type="file"
+          accept="image/png,image/jpeg,image/webp,image/svg+xml"
+          style={{ display: 'none' }}
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            if (f) onFile(f);
+            e.target.value = '';
+          }}
+        />
+        🏷️ {logo ? '替换 Logo' : '上传 Logo'}
+      </label>
+      {err && (
+        <div className="error" style={{ marginTop: '0.6rem' }}>
+          {err}
+        </div>
+      )}
     </div>
   );
 }

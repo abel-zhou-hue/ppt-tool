@@ -1,5 +1,6 @@
 import type { ApiKeys, Deck, ScriptInput } from '../types/deck';
 import { generateDeckImages, generateSingleSlideImage } from '../lib/imagegen';
+import { loadLogo } from '../lib/logo';
 import { callLLM } from '../lib/llm';
 import { downloadDeckAsPptx } from '../lib/pptx';
 import {
@@ -62,7 +63,12 @@ export async function generateImages(
   deck: Deck,
   imageModel: string,
 ): Promise<Deck> {
-  return generateDeckImages(deck, imageModel as ImageProvider, loadApiKeys());
+  return generateDeckImages(
+    deck,
+    imageModel as ImageProvider,
+    loadApiKeys(),
+    loadLogo(),
+  );
 }
 
 export async function regenerateSlide(
@@ -82,6 +88,7 @@ export async function regenerateSlide(
     isAnchor,
     provider: imageModel as ImageProvider,
     apiKeys: loadApiKeys(),
+    logoDataUri: loadLogo(),
   });
 
   const newSlides = [...deck.slides];

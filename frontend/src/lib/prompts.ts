@@ -221,13 +221,22 @@ export function buildImagePrompt(params: {
   language: Language;
   provider: ImageProvider;
   hasReference?: boolean;
+  hasLogo?: boolean;
 }): string {
-  const { imagePromptGpt, imagePromptSeedream, language, provider, hasReference } = params;
+  const { imagePromptGpt, imagePromptSeedream, language, provider, hasReference, hasLogo } =
+    params;
 
   const rawPrompt =
     provider === 'seedream' && imagePromptSeedream
       ? imagePromptSeedream
       : imagePromptGpt;
+
+  const logoClauseEn = hasLogo
+    ? `🏷️ BRAND LOGO REQUIREMENT: One of the reference images is the user's brand logo. You MUST integrate this exact logo into the top-left corner of the slide (approximately 8-12% of slide width). Preserve the logo's exact design — do NOT modify its colors, shape, or text. The logo should look professionally placed, not stretched or distorted.\n\n`
+    : '';
+  const logoClauseZh = hasLogo
+    ? `🏷️ **品牌 logo 强制要求**：参考图中有一张是用户的品牌 logo，**必须**把这个 logo 原样（不变色、不变形）放到幻灯片**左上角**（约占画面宽度 8-12%）。logo 要看起来是专业地嵌入设计，不能拉伸、不能变色、不能更改设计。\n\n`
+    : '';
 
   if (language === 'en') {
     const refClause = hasReference
@@ -238,7 +247,7 @@ export function buildImagePrompt(params: {
       provider === 'seedream'
         ? `⚠️ TEXT CONVENTION: Only text wrapped in 「」 corner quotes should appear as visible text on the image. ALL other descriptions (icon positions, card colors, layout structure) are drawing instructions and MUST NOT appear as visible text.\n\n[FULL-BLEED CONSTRAINT] Fill the entire 16:9 canvas, no large empty areas on any side.\n\n`
         : `[FULL-BLEED] Fill the entire 16:9 canvas, balanced composition, no large empty areas.\n\n`;
-    return languageClause + refClause + seedreamPrefix + rawPrompt;
+    return logoClauseEn + languageClause + refClause + seedreamPrefix + rawPrompt;
   }
 
   const refClause = hasReference
@@ -249,5 +258,5 @@ export function buildImagePrompt(params: {
     provider === 'seedream'
       ? `⚠️ **文字硬约定**：只有「中文直角引号」内的中文才能作为可见文字渲染到图上。所有其他描述（图标位置、卡片颜色、布局结构、装饰指令）都是**绘图指令**，**绝对不能**作为可见文字出现在图中。重复一遍：「」外的"配 XX 图标""（XX 色）""加上 XX"这种描述全部是给你的指令，不是要写在图上的文字。\n\n【构图硬约束】铺满 16:9 整个画面，禁止任何一侧大面积空白。\n\n`
       : `【构图硬约束】铺满 16:9 整个画面，构图均衡，禁止任何一侧大面积空白。\n\n`;
-  return languageClause + refClause + seedreamPrefix + rawPrompt;
+  return logoClauseZh + languageClause + refClause + seedreamPrefix + rawPrompt;
 }
