@@ -15,8 +15,17 @@ function viaProxy(url: string, proxy: string): string {
 }
 
 async function fetchAsDataUri(url: string): Promise<string> {
-  const resp = await fetch(url);
-  if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+  let resp: Response;
+  try {
+    resp = await fetch(url);
+  } catch (e) {
+    // 网络/CORS/超时类失败，没有 HTTP 状态
+    const msg = e instanceof Error ? e.message : String(e);
+    throw new Error(`网络失败: ${msg}`);
+  }
+  if (!resp.ok) {
+    throw new Error(`HTTP ${resp.status} ${resp.statusText}`);
+  }
   const blob = await resp.blob();
   return await new Promise<string>((resolve, reject) => {
     const reader = new FileReader();
@@ -26,21 +35,38 @@ async function fetchAsDataUri(url: string): Promise<string> {
   });
 }
 
+function hostOf(url: string): string {
+  try {
+    return new URL(url).host;
+  } catch {
+    return url.slice(0, 40);
+  }
+}
+
 /**
  * 尝试直连；失败时回落到 CORS 代理（如果用户配了）。
  */
 async function fetchImageAsDataUri(url: string): Promise<string> {
+  const host = hostOf(url);
   try {
-    return await fetchAsDataUri(url);
+    const data = await fetchAsDataUri(url);
+    console.log(`[pptx] ✓ ${host} OK`);
+    return data;
   } catch (e) {
+    const directMsg = e instanceof Error ? e.message : String(e);
+    console.warn(`[pptx] ✗ ${host} direct fail: ${directMsg}`);
     const proxy = (loadApiKeys().cors_proxy_url || '').trim();
     if (!proxy) {
-      const msg = e instanceof Error ? e.message : String(e);
-      throw new Error(
-        `下载失败（CORS 受限？）：${msg}。Seedream 图片需要在 Settings 里配 CORS 代理才能嵌入 PPT。`,
-      );
+      throw new Error(`${host} ${directMsg}（无 CORS 代理）`);
     }
-    return await fetchAsDataUri(viaProxy(url, proxy));
+    try {
+      const data = await fetchAsDataUri(viaProxy(url, proxy));
+      console.log(`[pptx] ✓ ${host} 经代理 OK`);
+      return data;
+    } catch (e2) {
+      const proxyMsg = e2 instanceof Error ? e2.message : String(e2);
+      throw new Error(`${host} 直连失败:${directMsg} 代理也失败:${proxyMsg}`);
+    }
   }
 }
 
