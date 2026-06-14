@@ -15,6 +15,7 @@ import { extractTextFromFile } from './lib/docparse';
 import { clearLogo, fileToDataUri, loadLogo, saveLogo } from './lib/logo';
 import {
   type Material,
+  clearAllMaterials,
   deleteMaterial,
   fileToMaterial,
   listMaterials,
@@ -434,6 +435,8 @@ function App() {
 
               {error && <div className="error">错误：{error}</div>}
 
+              <MaterialsSection />
+
               <div className="examples">
                 <h3 className="sec-title">没有现成文稿？试试这些示例</h3>
                 <div className="example-cards">
@@ -700,8 +703,6 @@ function SettingsModal({
 
         <LogoSection />
 
-        <MaterialsSection />
-
         <div className="modal-actions">
           <button className="ghost" onClick={onCancel}>
             取消
@@ -745,12 +746,27 @@ function MaterialsSection() {
     setItems(all);
   }
 
+  async function onClearAll() {
+    if (!items.length) return;
+    if (!confirm(`确定清空全部 ${items.length} 张素材？`)) return;
+    await clearAllMaterials();
+    setItems([]);
+  }
+
   return (
-    <div className="modal-section">
-      <h4>仪器素材库（智能匹配，按需注入）</h4>
-      <p className="modal-section-hint">
-        上传仪器/设备真实照片 + 一句简短描述。LLM 会根据每页内容判断哪些素材相关，
-        只把相关的素材作为参考图传给图像模型。已上传 {items.length} 张。
+    <section className="materials-card">
+      <div className="materials-card-head">
+        <h3 className="sec-title">本次 PPT 的仪器素材（可选）</h3>
+        {items.length > 0 && (
+          <button className="ghost" type="button" onClick={onClearAll}>
+            清空全部
+          </button>
+        )}
+      </div>
+      <p className="hint-small">
+        上传跟本次主题相关的仪器/设备真实照片 + 一句简短描述。
+        LLM 会判断每页内容涉及到哪些素材，只把相关的传给图像模型作为参考图。
+        切换主题前点"清空全部"。
       </p>
 
       {items.length > 0 && (
@@ -771,35 +787,31 @@ function MaterialsSection() {
         </div>
       )}
 
-      <label style={{ marginTop: '0.6rem' }}>
-        <span>描述（先填这个，再选文件上传）</span>
+      <div className="materials-upload-row">
         <input
           type="text"
-          placeholder="如：尿试纸条，含 pH/比重/红血球指标块"
+          className="material-desc-input"
+          placeholder="先填描述，如：尿试纸条，含 pH/比重/红血球指标块"
           value={desc}
           onChange={(e) => setDesc(e.target.value)}
         />
-      </label>
-      <label className="upload-btn" style={{ marginTop: '0.5rem' }}>
-        <input
-          type="file"
-          accept="image/png,image/jpeg,image/webp"
-          style={{ display: 'none' }}
-          disabled={busy || !desc.trim()}
-          onChange={(e) => {
-            const f = e.target.files?.[0];
-            if (f) onFile(f);
-            e.target.value = '';
-          }}
-        />
-        📷 {busy ? '上传中……' : desc.trim() ? '上传素材' : '请先填描述'}
-      </label>
-      {err && (
-        <div className="error" style={{ marginTop: '0.6rem' }}>
-          {err}
-        </div>
-      )}
-    </div>
+        <label className="upload-btn">
+          <input
+            type="file"
+            accept="image/png,image/jpeg,image/webp"
+            style={{ display: 'none' }}
+            disabled={busy || !desc.trim()}
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) onFile(f);
+              e.target.value = '';
+            }}
+          />
+          📷 {busy ? '上传中……' : desc.trim() ? '上传素材' : '请先填描述'}
+        </label>
+      </div>
+      {err && <div className="error">{err}</div>}
+    </section>
   );
 }
 

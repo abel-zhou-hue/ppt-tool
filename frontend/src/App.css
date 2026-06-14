@@ -506,6 +506,53 @@ button.ghost:disabled {
   flex-shrink: 0;
 }
 
+.materials-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 1rem 1.2rem;
+  margin: 1.25rem 0;
+  box-shadow: var(--shadow-sm);
+}
+
+.materials-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.4rem;
+}
+
+.materials-card-head .sec-title {
+  margin: 0;
+}
+
+.materials-upload-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-top: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.material-desc-input {
+  flex: 1;
+  min-width: 240px;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.85rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-family: inherit;
+  color: var(--text);
+  background: white;
+}
+
+.material-desc-input:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-soft);
+}
+
 button.cta {
   padding: 0.85rem 2rem;
   font-size: 1rem;

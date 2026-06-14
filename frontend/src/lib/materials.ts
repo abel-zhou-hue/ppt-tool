@@ -61,6 +61,10 @@ export async function deleteMaterial(id: string): Promise<void> {
   await withStore('readwrite', (s) => s.delete(id) as IDBRequest<undefined>);
 }
 
+export async function clearAllMaterials(): Promise<void> {
+  await withStore('readwrite', (s) => s.clear() as IDBRequest<undefined>);
+}
+
 export async function fileToMaterial(
   file: File,
   description: string,
